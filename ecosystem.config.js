@@ -19,7 +19,7 @@ module.exports = {
         NODE_ENV: "production",
         // Bind to all interfaces so nginx on the same host can reach it.
         HOSTNAME: "0.0.0.0",
-        PORT: 3000,
+        PORT: 3002,
         // Set the real value on the server; do not commit secrets.
         // DATABASE_URL: "mysql://user:pass@127.0.0.1:3306/photoday",
       },

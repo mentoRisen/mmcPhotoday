@@ -8,8 +8,9 @@ happens per site per timeslot.
 This repository is the **v1 skeleton**: a branded homepage plus placeholder
 routes for the scheduling features that come next. Booking, authentication,
 and notifications are not built yet — see
-`docs/brainstorms/2026-07-02-photoday-hub-requirements.md` and
-`docs/plans/2026-07-02-001-feat-photoday-hub-skeleton-plan.md`.
+`docs/architecture/app-workflow.md` for actors, domain models, and booking
+flows; `docs/brainstorms/2026-07-02-photoday-hub-requirements.md` and
+`docs/plans/2026-07-02-001-feat-photoday-hub-skeleton-plan.md` for v1 scope.
 
 ## Stack
 
@@ -35,10 +36,10 @@ cp .env.example .env
 
 # 3. Create the database schema (generates + applies migrations)
 npm run db:generate   # writes SQL into ./drizzle from src/db/schema.ts
-npm run db:migrate    # applies migrations to the DB in DATABASE_URL
+npm run db:migrate    # applies migrations + seeds four static timeslots
 
 # 4. Run the dev server
-npm run dev           # http://localhost:3000
+npm run dev           # http://localhost:3002
 ```
 
 Useful checks:
@@ -47,12 +48,23 @@ Useful checks:
 - `npm test` runs the test suite.
 - `npm run db:studio` opens Drizzle Studio to inspect the database.
 
+### Domain schema
+
+After `npm run db:migrate`, MySQL holds the photoday domain tables:
+
+- `persons` — unified profiles (`photographer`, `cosplayer`, `organizer`)
+- `locations` — bookable photoshoot spots
+- `timeslots` — four seeded day milestones (gatherup + three shoot slots)
+- `bookings` — cosplayer + photographer + location + timeslot (unique per location/timeslot)
+
+Entity relationships and workflows: `docs/architecture/app-workflow.md`. Booking creation logic: `src/db/bookings.ts` (`createBooking`).
+
 ## Environment variables
 
 | Variable       | Description                                   |
 | -------------- | --------------------------------------------- |
 | `DATABASE_URL` | MySQL connection string (`mysql://…`)         |
-| `PORT`         | Port the server listens on (default `3000`)   |
+| `PORT`         | Port the server listens on (default `3002`)   |
 
 Never commit `.env`; only `.env.example` is tracked.
 
