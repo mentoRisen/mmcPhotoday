@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const links = [
   { href: "/", label: "Domov" },
+  { href: "/photographers", label: "Fotografi" },
   { href: "/bookings", label: "Rezervácie" },
   { href: "/sessions", label: "Termíny" },
   { href: "/notifications", label: "Notifikácie" },

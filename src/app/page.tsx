@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-const features = [
+const features: {
+  title: string;
+  body: string;
+  link?: { href: string; label: string };
+}[] = [
   {
     title: "Fotostanovištia",
     body: "Viac lokácií na fotenie, každá s vlastným rozvrhom.",
@@ -8,6 +12,7 @@ const features = [
   {
     title: "Fotografi",
     body: "Viacerí fotografi s vlastnými voľnými termínmi.",
+    link: { href: "/photographers", label: "Spoznať fotografov" },
   },
   {
     title: "Cosplayeri",
@@ -46,6 +51,11 @@ export default function Home() {
           <article key={feature.title} className="feature-card">
             <h3>{feature.title}</h3>
             <p>{feature.body}</p>
+            {feature.link ? (
+              <Link href={feature.link.href} className="feature-card-link">
+                {feature.link.label}
+              </Link>
+            ) : null}
           </article>
         ))}
       </section>
