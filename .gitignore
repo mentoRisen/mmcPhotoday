@@ -40,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# catalog import — operator data and generated public assets
+/public/catalog/
+/import/**/*.json
+!/import/**/example-*.json
+/import/**/*.jpg
+/import/**/*.jpeg
+/import/**/*.png
+!/import/**/example-*.jpg
+!/import/**/example-*.jpeg
+!/import/**/example-*.png

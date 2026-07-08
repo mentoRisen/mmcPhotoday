@@ -1,0 +1,10 @@
+{
+  "name": "Anna Kovář",
+  "email": "anna@example.sk",
+  "description": "Portréty a cosplay fotografie pre Mini Movie Con.",
+  "instagram": "https://instagram.com/anna.kovar.photo",
+  "facebook": "https://facebook.com/anna.kovar.photo",
+  "twitter": "https://x.com/anna_kovar_photo",
+  "website": "https://anna-kovar.example.sk",
+  "portfolio": ["example-portfolio-01.jpg", "example-portfolio-02.jpg"]
+}

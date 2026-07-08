@@ -59,12 +59,38 @@ After `npm run db:migrate`, MySQL holds the photoday domain tables:
 
 Entity relationships and workflows: `docs/architecture/app-workflow.md`. Booking creation logic: `src/db/bookings.ts` (`createBooking`).
 
+### Catalog import
+
+Organizers load photographer and location catalog data from flat folders before booking opens. This is separate from `db:migrate` — run it when catalog JSON or images change.
+
+**Folder layout**
+
+```text
+import/photographers/   one *.json per photographer + co-located JPEG/PNG files
+import/locations/       one *.json per location + co-located JPEG/PNG files
+```
+
+Copy `import/photographers/example-photographer.json` and `import/locations/example-location.json` as templates. Image filenames must be **unique within each folder** across all JSON files (e.g. two photographers cannot both reference `hero.jpg`).
+
+**Import command**
+
+```bash
+# Ensure DATABASE_URL is set (see .env.example)
+# Set CATALOG_BASE_URL to the public site URL (defaults to http://localhost:3002)
+npm run import:catalog
+```
+
+The CLI copies referenced images to `public/catalog/{photographers|locations}/{slug}/`, upserts `persons` (type `photographer`) by email and `locations` by name, and prints per-file results. Re-running is safe — existing records are updated. Operator-added JSON and images are gitignored; only `example-*` templates are tracked.
+
+On production deploy, `public/catalog/` is included when you copy `public/` into the standalone build (see deploy steps below).
+
 ## Environment variables
 
-| Variable       | Description                                   |
-| -------------- | --------------------------------------------- |
-| `DATABASE_URL` | MySQL connection string (`mysql://…`)         |
-| `PORT`         | Port the server listens on (default `3002`)   |
+| Variable            | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`      | MySQL connection string (`mysql://…`)                              |
+| `PORT`              | Port the server listens on (default `3002`)                        |
+| `CATALOG_BASE_URL`  | Public base URL for gallery images written by `import:catalog`     |
 
 Never commit `.env`; only `.env.example` is tracked.
 
@@ -116,7 +142,13 @@ src/
   components/SiteNav.tsx
   db/
     index.ts              # Drizzle client (dev-safe pool singleton)
-    schema.ts             # minimal schema (domain tables come later)
+    schema.ts             # domain tables (persons, locations, timeslots, bookings)
+    catalog-import.ts     # upsert helpers for catalog import CLI
+import/
+  photographers/          # organizer JSON + images (example templates committed)
+  locations/
+scripts/
+  import-catalog.ts       # npm run import:catalog
 deploy/nginx.conf.example
 ecosystem.config.js       # PM2 config
 drizzle.config.ts
