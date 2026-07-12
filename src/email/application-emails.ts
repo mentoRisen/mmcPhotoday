@@ -6,6 +6,7 @@ export type ApplicationEmailDetail = {
   photographerName: string;
   locationName: string;
   timeslotLabel: string;
+  timeslotStartTime: string;
   submittedAt: Date;
 };
 
@@ -45,13 +46,88 @@ export function buildPhotographerReviewUrl(
   return `${loadBaseUrl()}/photographers/${photographerId}?${params.toString()}`;
 }
 
+function formatTimeslot(label: string, startTime: string): string {
+  const time = startTime.slice(0, 5);
+  return time ? `${label} (${time})` : label;
+}
+
 function buildSummaryLines(detail: ApplicationEmailDetail): string[] {
   return [
     `Fotograf: ${detail.photographerName}`,
     `Stanovište: ${detail.locationName}`,
-    `Termín: ${detail.timeslotLabel}`,
+    `Termín: ${formatTimeslot(detail.timeslotLabel, detail.timeslotStartTime)}`,
     `Odoslané: ${formatSubmittedAt(detail.submittedAt)}`,
   ];
+}
+
+export type SessionConfirmationEmailDetail = ApplicationEmailDetail & {
+  confirmedAt: Date;
+};
+
+export async function sendSessionConfirmationToCosplayer(
+  detail: SessionConfirmationEmailDetail,
+): Promise<void> {
+  const lines = buildSummaryLines(detail);
+  const text = [
+    `Ahoj ${detail.cosplayerName},`,
+    "",
+    "tvoje fotenie na MMC Photoday bolo potvrdené fotografom.",
+    "",
+    ...lines,
+    "",
+    "Stav: potvrdené",
+  ].join("\n");
+
+  const html = [
+    `<p>Ahoj ${detail.cosplayerName},</p>`,
+    "<p>tvoje fotenie na MMC Photoday bolo potvrdené fotografom.</p>",
+    "<ul>",
+    ...lines.map((line) => `<li>${line}</li>`),
+    "</ul>",
+    "<p><strong>Stav:</strong> potvrdené</p>",
+  ].join("");
+
+  await sendEmail({
+    to: detail.cosplayerEmail,
+    subject: "MMC Photoday — fotenie potvrdené",
+    text,
+    html,
+  });
+}
+
+export type SessionRevocationEmailDetail = ApplicationEmailDetail & {
+  revokedAt: Date;
+};
+
+export async function sendSessionRevocationToCosplayer(
+  detail: SessionRevocationEmailDetail,
+): Promise<void> {
+  const lines = buildSummaryLines(detail);
+  const text = [
+    `Ahoj ${detail.cosplayerName},`,
+    "",
+    "fotograf zrušil potvrdenie tvojho fotenia na MMC Photoday.",
+    "",
+    ...lines,
+    "",
+    "Stav: čaká na schválenie",
+  ].join("\n");
+
+  const html = [
+    `<p>Ahoj ${detail.cosplayerName},</p>`,
+    "<p>fotograf zrušil potvrdenie tvojho fotenia na MMC Photoday.</p>",
+    "<ul>",
+    ...lines.map((line) => `<li>${line}</li>`),
+    "</ul>",
+    "<p><strong>Stav:</strong> čaká na schválenie</p>",
+  ].join("");
+
+  await sendEmail({
+    to: detail.cosplayerEmail,
+    subject: "MMC Photoday — potvrdenie zrušené",
+    text,
+    html,
+  });
 }
 
 export async function sendApplicationConfirmationToCosplayer(
@@ -128,7 +204,7 @@ export async function sendApplicationNotificationToPhotographer(
   const lines = [
     `Cosplayer: ${detail.cosplayerName} (${detail.cosplayerEmail})`,
     `Stanovište: ${detail.locationName}`,
-    `Termín: ${detail.timeslotLabel}`,
+    `Termín: ${formatTimeslot(detail.timeslotLabel, detail.timeslotStartTime)}`,
     `Odoslané: ${formatSubmittedAt(detail.submittedAt)}`,
   ];
 

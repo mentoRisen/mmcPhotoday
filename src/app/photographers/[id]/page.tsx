@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import PhotographerApplicationList from "@/components/PhotographerApplicationList";
 import PhotographerProfile from "@/components/PhotographerProfile";
+import ActionErrorFromUrl from "@/components/ActionErrorFromUrl";
 import { actionErrorMessage } from "@/app/photographers/[id]/action-errors";
 import { listApplicationsForPhotographer } from "@/db/applications";
+import { listLocations } from "@/db/locations";
 import {
   getPhotographerById,
   isPhotographerLoginValid,
 } from "@/db/photographers";
+import { listBookableTimeslots } from "@/db/timeslots";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +81,11 @@ export default async function PhotographerDetailPage({
   const canManage =
     loginHash.length > 0 &&
     (await isPhotographerLoginValid(photographer.id, loginHash));
-  const applications = await listApplicationsForPhotographer(photographer.id);
+  const [applications, locations, timeslots] = await Promise.all([
+    listApplicationsForPhotographer(photographer.id),
+    listLocations(),
+    listBookableTimeslots(),
+  ]);
 
   return (
     <section>
@@ -95,7 +102,13 @@ export default async function PhotographerDetailPage({
         </p>
       ) : null}
 
-      {actionError ? <p className="form-error">{actionError}</p> : null}
+      {canManage && actionError && loginHash ? (
+        <ActionErrorFromUrl
+          message={actionError}
+          photographerId={photographer.id}
+          loginHash={loginHash}
+        />
+      ) : null}
 
       <PhotographerProfile photographer={photographer} />
 
@@ -117,6 +130,8 @@ export default async function PhotographerDetailPage({
         </div>
         <PhotographerApplicationList
           applications={applications}
+          locations={locations}
+          timeslots={timeslots}
           canManage={canManage}
           photographerId={photographer.id}
           loginHash={canManage ? loginHash : undefined}

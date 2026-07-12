@@ -4,7 +4,17 @@ import type { Person } from "@/db/schema";
 
 const getPhotographerById = vi.fn();
 const listApplicationsForPhotographer = vi.fn();
+const listLocations = vi.fn();
+const listBookableTimeslots = vi.fn();
 const isPhotographerLoginValid = vi.fn();
+
+vi.mock("@/db/locations", () => ({
+  listLocations: (...args: unknown[]) => listLocations(...args),
+}));
+
+vi.mock("@/db/timeslots", () => ({
+  listBookableTimeslots: (...args: unknown[]) => listBookableTimeslots(...args),
+}));
 
 vi.mock("@/db/photographers", () => ({
   getPhotographerById: (...args: unknown[]) => getPhotographerById(...args),
@@ -46,8 +56,14 @@ describe("photographer detail page", () => {
   beforeEach(() => {
     getPhotographerById.mockReset();
     listApplicationsForPhotographer.mockReset();
+    listLocations.mockReset();
+    listBookableTimeslots.mockReset();
     isPhotographerLoginValid.mockReset();
     isPhotographerLoginValid.mockResolvedValue(false);
+    listLocations.mockResolvedValue([{ id: 1, name: "Castle" }]);
+    listBookableTimeslots.mockResolvedValue([
+      { id: 2, label: "Second shoot", startTime: "11:00:00", bookable: true },
+    ]);
   });
 
   it("renders profile and applications for a valid photographer", async () => {
@@ -58,7 +74,9 @@ describe("photographer detail page", () => {
         status: "pending",
         createdAt: new Date("2026-07-11T09:00:00Z"),
         cosplayerName: "Test Cosplayer",
+        locationId: 1,
         locationName: "Námestie Majstra Pavla",
+        timeslotId: 2,
         timeslotLabel: "Second shoot",
         timeslotStartTime: "11:00:00",
       },
@@ -145,7 +163,9 @@ describe("photographer detail page", () => {
         status: "pending",
         createdAt: new Date("2026-07-11T09:00:00Z"),
         cosplayerName: "Test Cosplayer",
+        locationId: 1,
         locationName: "Námestie Majstra Pavla",
+        timeslotId: 2,
         timeslotLabel: "Second shoot",
         timeslotStartTime: "11:00:00",
       },

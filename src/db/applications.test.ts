@@ -17,16 +17,33 @@ import {
   confirmApplicationByPhotographer,
   listApplicationsForPhotographer,
   listConfirmedLocationTimeslotKeys,
+  listConfirmedPhotographerTimeslotKeys,
   listConfirmedSessions,
   revokeApplicationByPhotographer,
 } from "./applications";
-import { BookingConflictError, NonBookableTimeslotError } from "./bookings";
+import {
+  BookingConflictError,
+  NonBookableTimeslotError,
+  PhotographerScheduleConflictError,
+} from "./bookings";
 
 describe("applications", () => {
   beforeEach(() => {
     select.mockReset();
     insert.mockReset();
     transaction.mockReset();
+  });
+
+  it("listConfirmedPhotographerTimeslotKeys returns only confirmed rows", async () => {
+    const where = vi.fn().mockResolvedValue([
+      { photographerId: 10, timeslotId: 2 },
+    ]);
+    const from = vi.fn().mockReturnValue({ where });
+    select.mockReturnValueOnce({ from });
+
+    await expect(listConfirmedPhotographerTimeslotKeys()).resolves.toEqual([
+      { photographerId: 10, timeslotId: 2 },
+    ]);
   });
 
   it("listConfirmedLocationTimeslotKeys returns only confirmed rows", async () => {
@@ -66,6 +83,16 @@ describe("applications", () => {
                 if (selectCall === 4) {
                   return [
                     {
+                      id: 2,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
+                if (selectCall === 5) {
+                  return [
+                    {
                       id: 1,
                       type: "cosplayer",
                       name: "New Cosplayer",
@@ -73,7 +100,7 @@ describe("applications", () => {
                     },
                   ];
                 }
-                if (selectCall === 5) {
+                if (selectCall === 6) {
                   return [
                     {
                       name: "Anna",
@@ -82,10 +109,10 @@ describe("applications", () => {
                     },
                   ];
                 }
-                if (selectCall === 6) {
+                if (selectCall === 7) {
                   return [{ name: "Castle" }];
                 }
-                if (selectCall === 7) {
+                if (selectCall === 8) {
                   return [
                     {
                       id: 10,
@@ -157,23 +184,76 @@ describe("applications", () => {
     ).rejects.toBeInstanceOf(NonBookableTimeslotError);
   });
 
-  it("throws BookingConflictError when confirmed booking occupies slot", async () => {
+  it("throws PhotographerScheduleConflictError when photographer is busy", async () => {
     transaction.mockImplementation(async (fn) => {
+      let selectCall = 0;
       const tx = {
         select: () => ({
           from: () => ({
             where: () => ({
-              limit: vi
-                .fn()
-                .mockResolvedValueOnce([
-                  {
-                    id: 2,
-                    label: "First shoot",
-                    startTime: "09:30:00",
-                    bookable: true,
-                  },
-                ])
-                .mockResolvedValueOnce([{ id: 99 }]),
+              limit: vi.fn(async () => {
+                selectCall += 1;
+                if (selectCall === 1) {
+                  return [
+                    {
+                      id: 2,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
+                if (selectCall === 2) {
+                  return [];
+                }
+                if (selectCall === 3) {
+                  return [{ id: 88 }];
+                }
+                return [];
+              }),
+            }),
+          }),
+        }),
+        insert: vi.fn(),
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      createApplication({
+        email: "x@example.com",
+        name: "X",
+        photographerId: 2,
+        locationId: 3,
+        timeslotId: 2,
+      }),
+    ).rejects.toBeInstanceOf(PhotographerScheduleConflictError);
+  });
+
+  it("throws BookingConflictError when confirmed booking occupies slot", async () => {
+    transaction.mockImplementation(async (fn) => {
+      let selectCall = 0;
+      const tx = {
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: vi.fn(async () => {
+                selectCall += 1;
+                if (selectCall === 1) {
+                  return [
+                    {
+                      id: 2,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
+                if (selectCall === 2) {
+                  return [{ id: 99 }];
+                }
+                return [];
+              }),
             }),
           }),
         }),
@@ -200,7 +280,9 @@ describe("applications", () => {
         status: "pending",
         createdAt: new Date("2026-07-11T09:00:00Z"),
         cosplayerName: "Anna",
+        locationId: 1,
         locationName: "Castle",
+        timeslotId: 2,
         timeslotLabel: "First shoot",
         timeslotStartTime: "09:30:00",
       },
@@ -222,7 +304,9 @@ describe("applications", () => {
         status: "pending",
         createdAt: new Date("2026-07-11T09:00:00Z"),
         cosplayerName: "Anna",
+        locationId: 1,
         locationName: "Castle",
+        timeslotId: 2,
         timeslotLabel: "First shoot",
         timeslotStartTime: "09:30:00",
       },
@@ -291,7 +375,7 @@ describe("applications", () => {
     await expect(listConfirmedSessions()).resolves.toEqual([]);
   });
 
-  it("confirmApplicationByPhotographer sets pending booking to confirmed", async () => {
+  it("confirmApplicationByPhotographer sets pending booking to confirmed with override", async () => {
     const whereUpdate = vi.fn().mockResolvedValue(undefined);
     const set = vi.fn().mockReturnValue({ where: whereUpdate });
     const update = vi.fn().mockReturnValue({ set });
@@ -299,6 +383,7 @@ describe("applications", () => {
     transaction.mockImplementation(async (fn) => {
       let selectCall = 0;
       const tx = {
+        execute: vi.fn().mockResolvedValue([]),
         select: () => ({
           from: () => ({
             where: () => ({
@@ -315,6 +400,16 @@ describe("applications", () => {
                     },
                   ];
                 }
+                if (selectCall === 2) {
+                  return [
+                    {
+                      id: 3,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
                 return [];
               }),
             }),
@@ -325,8 +420,158 @@ describe("applications", () => {
       return fn(tx);
     });
 
-    await expect(confirmApplicationByPhotographer(1, 10)).resolves.toBeUndefined();
-    expect(set).toHaveBeenCalledWith({ status: "confirmed" });
+    const limit = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          status: "confirmed",
+          createdAt: new Date("2026-07-11T09:00:00Z"),
+          cosplayerId: 5,
+          photographerId: 10,
+          locationId: 9,
+          timeslotId: 3,
+        },
+      ])
+      .mockResolvedValueOnce([{ name: "Anna", email: "anna@example.com" }])
+      .mockResolvedValueOnce([
+        { name: "Betty", email: "betty@example.sk", loginHash: "hash" },
+      ])
+      .mockResolvedValueOnce([{ name: "Square" }])
+      .mockResolvedValueOnce([
+        { label: "First shoot", startTime: "09:30:00" },
+      ]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    select.mockReturnValue({ from });
+
+    const detail = await confirmApplicationByPhotographer(1, 10, {
+      locationId: 9,
+      timeslotId: 3,
+    });
+
+    expect(detail.status).toBe("confirmed");
+    expect(detail.locationName).toBe("Square");
+    expect(set).toHaveBeenCalledWith({
+      status: "confirmed",
+      locationId: 9,
+      timeslotId: 3,
+    });
+  });
+
+  it("confirmApplicationByPhotographer rejects photographer schedule conflict", async () => {
+    const update = vi.fn();
+
+    transaction.mockImplementation(async (fn) => {
+      let selectCall = 0;
+      const tx = {
+        execute: vi.fn().mockResolvedValue([]),
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: vi.fn(async () => {
+                selectCall += 1;
+                if (selectCall === 1) {
+                  return [
+                    {
+                      id: 1,
+                      photographerId: 10,
+                      locationId: 8,
+                      timeslotId: 3,
+                      status: "pending",
+                    },
+                  ];
+                }
+                if (selectCall === 2) {
+                  return [
+                    {
+                      id: 3,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
+                if (selectCall === 3) {
+                  return [];
+                }
+                if (selectCall === 4) {
+                  return [{ id: 88 }];
+                }
+                return [];
+              }),
+            }),
+          }),
+        }),
+        update,
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      confirmApplicationByPhotographer(1, 10, {
+        locationId: 9,
+        timeslotId: 3,
+      }),
+    ).rejects.toBeInstanceOf(PhotographerScheduleConflictError);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("confirmApplicationByPhotographer rejects location+timeslot conflict", async () => {
+    const update = vi.fn();
+
+    transaction.mockImplementation(async (fn) => {
+      let selectCall = 0;
+      const tx = {
+        execute: vi.fn().mockResolvedValue([]),
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: vi.fn(async () => {
+                selectCall += 1;
+                if (selectCall === 1) {
+                  return [
+                    {
+                      id: 1,
+                      photographerId: 10,
+                      locationId: 8,
+                      timeslotId: 3,
+                      status: "pending",
+                    },
+                  ];
+                }
+                if (selectCall === 2) {
+                  return [
+                    {
+                      id: 3,
+                      label: "First shoot",
+                      startTime: "09:30:00",
+                      bookable: true,
+                    },
+                  ];
+                }
+                if (selectCall === 3) {
+                  return [{ id: 99 }];
+                }
+                return [];
+              }),
+            }),
+          }),
+        }),
+        update,
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      confirmApplicationByPhotographer(1, 10, {
+        locationId: 9,
+        timeslotId: 3,
+      }),
+    ).rejects.toBeInstanceOf(BookingConflictError);
+
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("revokeApplicationByPhotographer sets confirmed booking to pending", async () => {
@@ -356,7 +601,35 @@ describe("applications", () => {
       return fn(tx);
     });
 
-    await expect(revokeApplicationByPhotographer(2, 10)).resolves.toBeUndefined();
+    const limit = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: 2,
+          status: "pending",
+          createdAt: new Date("2026-07-11T09:00:00Z"),
+          cosplayerId: 5,
+          photographerId: 10,
+          locationId: 8,
+          timeslotId: 3,
+        },
+      ])
+      .mockResolvedValueOnce([{ name: "Anna", email: "anna@example.com" }])
+      .mockResolvedValueOnce([
+        { name: "Betty", email: "betty@example.sk", loginHash: "hash" },
+      ])
+      .mockResolvedValueOnce([{ name: "Square" }])
+      .mockResolvedValueOnce([
+        { label: "First shoot", startTime: "09:30:00" },
+      ]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    select.mockReturnValue({ from });
+
+    const detail = await revokeApplicationByPhotographer(2, 10);
+
     expect(set).toHaveBeenCalledWith({ status: "pending" });
+    expect(detail.status).toBe("pending");
+    expect(detail.timeslotStartTime).toBe("09:30:00");
   });
 });

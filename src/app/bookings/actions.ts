@@ -6,6 +6,7 @@ import { createApplication } from "@/db/applications";
 import {
   BookingConflictError,
   NonBookableTimeslotError,
+  PhotographerScheduleConflictError,
 } from "@/db/bookings";
 import {
   OrganizerEmailNotConfiguredError,
@@ -85,6 +86,7 @@ export async function submitApplication(
         photographerName: detail.photographerName,
         locationName: detail.locationName,
         timeslotLabel: detail.timeslotLabel,
+        timeslotStartTime: detail.timeslotStartTime,
         submittedAt: detail.createdAt,
       });
     } catch (error) {
@@ -98,6 +100,7 @@ export async function submitApplication(
         photographerName: detail.photographerName,
         locationName: detail.locationName,
         timeslotLabel: detail.timeslotLabel,
+        timeslotStartTime: detail.timeslotStartTime,
         submittedAt: detail.createdAt,
       });
     } catch (error) {
@@ -116,6 +119,7 @@ export async function submitApplication(
         photographerLoginHash: detail.photographerLoginHash,
         locationName: detail.locationName,
         timeslotLabel: detail.timeslotLabel,
+        timeslotStartTime: detail.timeslotStartTime,
         submittedAt: detail.createdAt,
       });
     } catch (error) {
@@ -133,6 +137,11 @@ export async function submitApplication(
     if (error instanceof BookingConflictError) {
       return {
         error: "Toto stanovište a termín sú už obsadené potvrdenou rezerváciou.",
+      };
+    }
+    if (error instanceof PhotographerScheduleConflictError) {
+      return {
+        error: "Tento fotograf má v tomto termíne už potvrdené fotenie.",
       };
     }
     console.error("Application submit failed", error);

@@ -12,6 +12,8 @@ import {
   sendApplicationConfirmationToCosplayer,
   sendApplicationNotificationToOrganizer,
   sendApplicationNotificationToPhotographer,
+  sendSessionConfirmationToCosplayer,
+  sendSessionRevocationToCosplayer,
 } from "./application-emails";
 
 const detail = {
@@ -19,7 +21,8 @@ const detail = {
   cosplayerEmail: "marek@example.com",
   photographerName: "Anna",
   locationName: "Castle Courtyard",
-  timeslotLabel: "First shoot",
+  timeslotLabel: "Third shoot",
+  timeslotStartTime: "11:00:00",
   submittedAt: new Date("2026-07-11T09:30:00Z"),
 };
 
@@ -43,6 +46,34 @@ describe("application emails", () => {
     delete process.env.CATALOG_BASE_URL;
   });
 
+  it("session confirmation email includes confirmed wording and timeslot time", async () => {
+    await sendSessionConfirmationToCosplayer({
+      ...detail,
+      confirmedAt: new Date("2026-07-12T10:00:00Z"),
+    });
+
+    expect(sendEmail).toHaveBeenCalledOnce();
+    const input = sendEmail.mock.calls[0][0];
+    expect(input.subject).toContain("potvrdené");
+    expect(input.text).toContain("potvrdené");
+    expect(input.text).toContain("Castle Courtyard");
+    expect(input.text).toContain("Third shoot (11:00)");
+  });
+
+  it("session revocation email includes revoked wording and timeslot time", async () => {
+    await sendSessionRevocationToCosplayer({
+      ...detail,
+      revokedAt: new Date("2026-07-12T10:00:00Z"),
+    });
+
+    expect(sendEmail).toHaveBeenCalledOnce();
+    const input = sendEmail.mock.calls[0][0];
+    expect(input.subject).toContain("zrušené");
+    expect(input.text).toContain("zrušil potvrdenie");
+    expect(input.text).toContain("Third shoot (11:00)");
+    expect(input.text).toContain("čaká na schválenie");
+  });
+
   it("cosplayer email includes summary fields and pending wording", async () => {
     await sendApplicationConfirmationToCosplayer(detail);
 
@@ -62,7 +93,7 @@ describe("application emails", () => {
     const input = sendEmail.mock.calls[0][0];
     expect(input.to).toBe("organizer@example.com");
     expect(input.text).toContain("marek@example.com");
-    expect(input.text).toContain("First shoot");
+    expect(input.text).toContain("Third shoot (11:00)");
   });
 
   it("organizer send throws when EMAIL_ORGANIZER_TO is unset", async () => {

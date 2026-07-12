@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ApplicationForm from "@/components/ApplicationForm";
-import { listConfirmedLocationTimeslotKeys } from "@/db/applications";
+import { listConfirmedLocationTimeslotKeys, listConfirmedPhotographerTimeslotKeys } from "@/db/applications";
 import { listLocations } from "@/db/locations";
 import { listPhotographers } from "@/db/photographers";
 import { listBookableTimeslots } from "@/db/timeslots";
@@ -23,11 +23,13 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
       ? requestedPhotographerId
       : undefined;
 
-  const [photographers, locations, timeslots, confirmedKeys] = await Promise.all([
+  const [photographers, locations, timeslots, confirmedKeys, confirmedPhotographerTimeslotKeys] =
+    await Promise.all([
     listPhotographers(),
     listLocations(),
     listBookableTimeslots(),
     listConfirmedLocationTimeslotKeys(),
+    listConfirmedPhotographerTimeslotKeys(),
   ]);
 
   const catalogReady =
@@ -54,6 +56,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
           locations={locations}
           timeslots={timeslots}
           confirmedKeys={confirmedKeys}
+          confirmedPhotographerTimeslotKeys={confirmedPhotographerTimeslotKeys}
           defaultPhotographerId={defaultPhotographerId}
         />
       )}

@@ -7,8 +7,11 @@ describe("homepage", () => {
   it("renders the event title and a CTA into a placeholder route", () => {
     render(<Home />);
     expect(screen.getByRole("heading", { name: /^Photoday$/i })).toBeDefined();
-    const cta = screen.getByRole("link", { name: "Rezervovať fotenie" });
-    expect(cta.getAttribute("href")).toBe("/bookings");
+    const ctas = screen.getAllByRole("link", { name: "Rezervovať fotenie" });
+    expect(ctas.length).toBeGreaterThan(0);
+    for (const cta of ctas) {
+      expect(cta.getAttribute("href")).toBe("/bookings");
+    }
   });
 
   it("covers R4: links to /photographers from the photographers feature card", () => {

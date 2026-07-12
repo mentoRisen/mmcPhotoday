@@ -958,6 +958,41 @@ a {
   font-size: 0.9rem;
 }
 
+.action-alert-dialog {
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.35);
+}
+
+.action-alert-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.action-alert-dialog-inner {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.action-alert-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.action-alert-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.action-alert-dialog-inner .btn {
+  justify-self: end;
+}
+
 .form-success {
   margin-top: 1.5rem;
   padding: 1.25rem;
