@@ -1,0 +1,18 @@
+# Allow deployer to manage the MMC Photoday dev service without a password.
+# Install once (as root):
+#   sudo cp /opt/mmcPhotoday/deploy/sudoers-mmc-photoday /etc/sudoers.d/mmc-photoday
+#   sudo chmod 440 /etc/sudoers.d/mmc-photoday
+#   sudo visudo -c -f /etc/sudoers.d/mmc-photoday
+Defaults:deployer !requiretty
+Cmnd_Alias MMC_PHOTODAY_SERVICE = \
+  /bin/systemctl start mmc-photoday-dev.service, \
+  /bin/systemctl stop mmc-photoday-dev.service, \
+  /bin/systemctl restart mmc-photoday-dev.service, \
+  /bin/systemctl status mmc-photoday-dev.service, \
+  /bin/systemctl enable mmc-photoday-dev.service, \
+  /bin/systemctl disable mmc-photoday-dev.service
+Cmnd_Alias MMC_PHOTODAY_LOGS = \
+  /usr/bin/journalctl -u mmc-photoday-dev.service -f, \
+  /usr/bin/journalctl -u mmc-photoday-dev.service -n 200 --no-pager
+deployer ALL=(root) NOPASSWD: MMC_PHOTODAY_SERVICE
+deployer ALL=(root) NOPASSWD: MMC_PHOTODAY_LOGS

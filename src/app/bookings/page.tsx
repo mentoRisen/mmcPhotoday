@@ -1,18 +1,62 @@
 import type { Metadata } from "next";
+import ApplicationForm from "@/components/ApplicationForm";
+import { listConfirmedLocationTimeslotKeys } from "@/db/applications";
+import { listLocations } from "@/db/locations";
+import { listPhotographers } from "@/db/photographers";
+import { listBookableTimeslots } from "@/db/timeslots";
 
 export const metadata: Metadata = {
   title: "Rezervácie — MMC Photoday",
 };
 
-export default function BookingsPage() {
+export const dynamic = "force-dynamic";
+
+type BookingsPageProps = {
+  searchParams: Promise<{ photographerId?: string }>;
+};
+
+export default async function BookingsPage({ searchParams }: BookingsPageProps) {
+  const query = await searchParams;
+  const requestedPhotographerId = Number.parseInt(query.photographerId ?? "", 10);
+  const defaultPhotographerId =
+    Number.isFinite(requestedPhotographerId) && requestedPhotographerId > 0
+      ? requestedPhotographerId
+      : undefined;
+
+  const [photographers, locations, timeslots, confirmedKeys] = await Promise.all([
+    listPhotographers(),
+    listLocations(),
+    listBookableTimeslots(),
+    listConfirmedLocationTimeslotKeys(),
+  ]);
+
+  const catalogReady =
+    photographers.length > 0 && locations.length > 0 && timeslots.length > 0;
+
   return (
     <section>
-      <h1 className="page-title">Rezervácie</h1>
+      <h1 className="page-title">Prihláška na fotenie</h1>
       <p className="page-lead">
-        Tu si cosplayeri budú rezervovať fotenie — výber fotostanovišťa,
-        časového okna a fotografa. Formulár pribudne v ďalšej fáze.
+        Vyber fotografa, fotostanovište a termín. Po odoslaní prihlášky ťa
+        organizátor kontaktuje po schválení.
       </p>
-      <span className="placeholder-badge">Pripravuje sa</span>
+
+      {!catalogReady ? (
+        <div className="empty-state">
+          <p>Rezervácie zatiaľ nie sú otvorené.</p>
+          <p className="empty-state-hint">
+            Fotografi a stanovištia sa zobrazia po importe katalógu organizátormi.
+          </p>
+        </div>
+      ) : (
+        <ApplicationForm
+          photographers={photographers}
+          locations={locations}
+          timeslots={timeslots}
+          confirmedKeys={confirmedKeys}
+          defaultPhotographerId={defaultPhotographerId}
+        />
+      )}
     </section>
   );
 }

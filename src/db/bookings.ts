@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { bookings, timeslots, type Booking } from "./schema";
 
@@ -23,12 +23,23 @@ export type CreateBookingInput = {
   timeslotId: number;
 };
 
-function isDuplicateKeyError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) {
-    return false;
-  }
-  const record = error as { errno?: number; code?: string };
-  return record.errno === 1062 || record.code === "ER_DUP_ENTRY";
+export async function hasConfirmedBookingAtSlot(
+  locationId: number,
+  timeslotId: number,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.locationId, locationId),
+        eq(bookings.timeslotId, timeslotId),
+        eq(bookings.status, "confirmed"),
+      ),
+    )
+    .limit(1);
+
+  return row !== undefined;
 }
 
 export async function createBooking(
@@ -44,31 +55,28 @@ export async function createBooking(
     throw new NonBookableTimeslotError();
   }
 
-  try {
-    const [result] = await db.insert(bookings).values({
-      cosplayerId: input.cosplayerId,
-      photographerId: input.photographerId,
-      locationId: input.locationId,
-      timeslotId: input.timeslotId,
-      status: "confirmed",
-    });
-
-    const insertId = Number(result.insertId);
-    const [created] = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, insertId))
-      .limit(1);
-
-    if (!created) {
-      throw new Error("Booking insert succeeded but row could not be loaded");
-    }
-
-    return created;
-  } catch (error) {
-    if (isDuplicateKeyError(error)) {
-      throw new BookingConflictError();
-    }
-    throw error;
+  if (await hasConfirmedBookingAtSlot(input.locationId, input.timeslotId)) {
+    throw new BookingConflictError();
   }
+
+  const [result] = await db.insert(bookings).values({
+    cosplayerId: input.cosplayerId,
+    photographerId: input.photographerId,
+    locationId: input.locationId,
+    timeslotId: input.timeslotId,
+    status: "confirmed",
+  });
+
+  const insertId = Number(result.insertId);
+  const [created] = await db
+    .select()
+    .from(bookings)
+    .where(eq(bookings.id, insertId))
+    .limit(1);
+
+  if (!created) {
+    throw new Error("Booking insert succeeded but row could not be loaded");
+  }
+
+  return created;
 }

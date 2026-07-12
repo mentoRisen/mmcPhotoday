@@ -9,7 +9,6 @@ import {
   decimal,
   time,
   boolean,
-  unique,
 } from "drizzle-orm/mysql-core";
 
 // Domain tables: app_health (probe), persons, locations, timeslots, bookings.
@@ -18,7 +17,7 @@ import {
 export const personTypes = ["photographer", "cosplayer", "organizer"] as const;
 export type PersonType = (typeof personTypes)[number];
 
-export const bookingStatuses = ["confirmed"] as const;
+export const bookingStatuses = ["pending", "confirmed"] as const;
 export type BookingStatus = (typeof bookingStatuses)[number];
 
 export const appHealth = mysqlTable("app_health", {
@@ -39,6 +38,7 @@ export const persons = mysqlTable("persons", {
   website: varchar("website", { length: 512 }),
   portfolioUrls: json("portfolio_urls").$type<string[]>(),
   referenceImageUrls: json("reference_image_urls").$type<string[]>(),
+  loginHash: varchar("login_hash", { length: 64 }).unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -62,32 +62,23 @@ export const timeslots = mysqlTable("timeslots", {
   bookable: boolean("bookable").notNull(),
 });
 
-export const bookings = mysqlTable(
-  "bookings",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    cosplayerId: int("cosplayer_id")
-      .notNull()
-      .references(() => persons.id),
-    photographerId: int("photographer_id")
-      .notNull()
-      .references(() => persons.id),
-    locationId: int("location_id")
-      .notNull()
-      .references(() => locations.id),
-    timeslotId: int("timeslot_id")
-      .notNull()
-      .references(() => timeslots.id),
-    status: mysqlEnum("status", bookingStatuses).notNull().default("confirmed"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [
-    unique("bookings_location_timeslot_unique").on(
-      table.locationId,
-      table.timeslotId,
-    ),
-  ],
-);
+export const bookings = mysqlTable("bookings", {
+  id: int("id").autoincrement().primaryKey(),
+  cosplayerId: int("cosplayer_id")
+    .notNull()
+    .references(() => persons.id),
+  photographerId: int("photographer_id")
+    .notNull()
+    .references(() => persons.id),
+  locationId: int("location_id")
+    .notNull()
+    .references(() => locations.id),
+  timeslotId: int("timeslot_id")
+    .notNull()
+    .references(() => timeslots.id),
+  status: mysqlEnum("status", bookingStatuses).notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type Person = typeof persons.$inferSelect;
 export type NewPerson = typeof persons.$inferInsert;

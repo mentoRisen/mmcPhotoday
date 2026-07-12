@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PhotographerCard from "@/components/PhotographerCard";
+import PhotographerRegistrationForm from "@/components/PhotographerRegistrationForm";
 import { listPhotographers } from "@/db/photographers";
 
 export const metadata: Metadata = {
@@ -32,10 +33,20 @@ export default async function PhotographersPage() {
             <PhotographerCard
               key={photographer.id}
               photographer={photographer}
+              detailHref={`/photographers/${photographer.id}`}
             />
           ))}
         </div>
       )}
+
+      <section className="photographer-registration">
+        <h2 className="section-title">Chceš fotiť na Photoday?</h2>
+        <p className="section-lead">
+          Vyplň registráciu a organizátor ťa kontaktuje. Profil sa pridáva po
+          schválení — nie priamo cez formulár.
+        </p>
+        <PhotographerRegistrationForm />
+      </section>
     </section>
   );
 }

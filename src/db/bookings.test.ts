@@ -40,6 +40,7 @@ describe("createBooking", () => {
     mockSelectChain([
       { id: 2, label: "First shoot", startTime: "09:30:00", bookable: true },
     ]);
+    mockSelectChain([]);
     mockInsertChain(10);
     mockSelectChain([
       {
@@ -65,12 +66,11 @@ describe("createBooking", () => {
     expect(insert).toHaveBeenCalledOnce();
   });
 
-  it("covers AE2: throws BookingConflictError on duplicate location-timeslot", async () => {
+  it("covers AE2: throws BookingConflictError when confirmed booking exists", async () => {
     mockSelectChain([
       { id: 2, label: "First shoot", startTime: "09:30:00", bookable: true },
     ]);
-    const values = vi.fn().mockRejectedValue({ errno: 1062, code: "ER_DUP_ENTRY" });
-    insert.mockReturnValueOnce({ values });
+    mockSelectChain([{ id: 99 }]);
 
     await expect(
       createBooking({
@@ -80,6 +80,8 @@ describe("createBooking", () => {
         timeslotId: 2,
       }),
     ).rejects.toBeInstanceOf(BookingConflictError);
+
+    expect(insert).not.toHaveBeenCalled();
   });
 
   it("throws NonBookableTimeslotError for gatherup without inserting", async () => {

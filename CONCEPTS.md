@@ -12,3 +12,11 @@ A catalog entity representing a photographer profile plus its associated portfol
 
 ### Location Catalog Entry
 A catalog entity representing a shoot location profile plus its associated preview media set as imported from file-based source material.
+
+## Scheduling Domain
+
+### Photoshoot Application
+A cosplayer's request for a session at a specific location, bookable timeslot, and photographer. Submissions land as pending bookings until an organizer or photographer approves them in a future review flow; pending applications do not hold the location+timeslot pair.
+
+### Confirm-only slot hold
+Availability rule where only confirmed bookings block a location+timeslot pair. Multiple pending photoshoot applications may target the same pair until one is confirmed.

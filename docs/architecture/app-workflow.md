@@ -2,7 +2,9 @@
 
 How MMC Photoday coordinates photographers, cosplayers, locations, and timeslots for Mini Movie Con photoday at `photoday.minimoviecon.sk`.
 
-**Status:** v1 skeleton is live (homepage + placeholder routes). Domain tables and booking flows are defined here but not yet implemented in code.
+**Status:** Domain tables and core flows are implemented. Cosplayers submit pending applications at `/bookings`; photographers confirm or revoke on `/photographers/[id]?loginHash=…`. Organizer admin UI and full session auth remain deferred.
+
+**Photographer review (loginHash):** [photographer-application-review.md](./photographer-application-review.md)
 
 **Source of truth for entity fields:** [domain-models requirements](../brainstorms/2026-07-06-domain-models-requirements.md)
 
@@ -48,8 +50,10 @@ One table with a `type` discriminator: `photographer`, `cosplayer`, or `organize
 | social links (Instagram, Facebook, Twitter/X, website) | optional | | | |
 | portfolio gallery (image URLs) | | optional | — | — |
 | reference images (image URLs) | | — | optional | — |
+| `login_hash` | | optional, unique | — | — |
 
 - `email` is unique across all Person records.
+- `login_hash` is used only for photographer application review (see [photographer-application-review.md](./photographer-application-review.md)); not shown on public pages. Set automatically on catalog import.
 - Galleries are ordered URL lists; file upload is deferred.
 
 ### Location (bookable spot)
@@ -75,7 +79,7 @@ Fixed for the event day — not organizer-configurable.
 | Second shoot | 11:00 | yes |
 | Third shoot | 12:30 | yes |
 
-### Booking (session)
+### Booking (session / application)
 
 Links exactly one of each:
 
@@ -84,9 +88,17 @@ Links exactly one of each:
 - location
 - bookable shoot timeslot (9:30, 11:00, or 12:30)
 
+**Status:**
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Application submitted; does not hold the slot |
+| `confirmed` | Photographer confirmed; holds the location+timeslot pair |
+
 **Constraints:**
 
-- One booking max per **location + timeslot** pair.
+- At most one **confirmed** booking per **location + timeslot** pair.
+- Multiple **pending** applications may target the same location+timeslot.
 - A cosplayer may hold multiple bookings if each uses a different location, timeslot, or both.
 - A photographer may appear in multiple bookings across different location-timeslot pairs.
 
@@ -139,29 +151,58 @@ sequenceDiagram
 
 **Outcome:** Cosplayer identity exists and can be attached to bookings. Authentication mechanism is deferred.
 
-### 3. Cosplayer books a session
+### 3. Cosplayer submits an application
 
-Main product flow.
+Main cosplayer flow (creates a **pending** booking; photographer confirms later — workflow 4).
 
 ```mermaid
 sequenceDiagram
   participant C as Cosplayer
   participant App as Photoday app
   participant DB as Database
+  participant Mail as Email (SMTP)
 
-  C->>App: Open booking flow
-  App->>DB: Load locations, photographers, available timeslots
-  C->>App: Select location, timeslot (9:30/11:00/12:30), photographer
-  App->>DB: Check location+timeslot is free
-  alt Slot available
-    App->>DB: Create Booking
-    App-->>C: Confirmed
-  else Slot taken
-    App-->>C: Rejected (conflict)
-  end
+  C->>App: Open /bookings
+  App->>DB: Load locations, photographers, bookable timeslots
+  App->>DB: Load confirmed location+timeslot keys (pending does not block)
+  C->>App: Enter email/name, select location, timeslot, photographer
+  App->>DB: Create cosplayer if new; insert booking status=pending
+  App->>Mail: Confirmation to cosplayer
+  App->>Mail: Notification to organizer (EMAIL_ORGANIZER_TO)
+  App->>Mail: Notification to photographer (with review link)
+  App-->>C: Summary page
 ```
 
-**Outcome:** One booking record ties cosplayer, photographer, location, and timeslot — or the request is rejected if that location-timeslot pair is already booked.
+**Outcome:** Pending application exists; slot is not held until photographer confirms.
+
+**Submit emails** (see [email.md](./email.md)):
+
+| Recipient | Purpose |
+|-----------|---------|
+| Cosplayer | Confirmation that the application was received (`pending`) |
+| Organizer | New application summary (`EMAIL_ORGANIZER_TO`) |
+| Photographer | Application summary + link to `/photographers/[id]?loginHash=…` for confirm/revoke |
+
+The photographer link uses `persons.login_hash` and `BASE_URL`. Hashes are created on catalog import; use `npm run photographers:set-login-hashes` only to backfill older rows.
+
+### 4. Photographer reviews applications
+
+Photographers use a private link with `?loginHash=` on their detail page. See [photographer-application-review.md](./photographer-application-review.md).
+
+```mermaid
+sequenceDiagram
+  participant P as Photographer
+  participant App as Photoday app
+  participant DB as Database
+
+  P->>App: Open /photographers/[id]?loginHash=secret
+  App->>DB: Validate hash, load applications
+  P->>App: Confirm pending or revoke confirmed
+  App->>DB: Update booking status (with slot conflict check on confirm)
+  App-->>P: Redirect back with loginHash preserved
+```
+
+**Outcome:** Photographer moves applications between `pending` and `confirmed`; only confirmed rows block the cosplayer booking picker.
 
 ### Day-of schedule (informational)
 
@@ -178,43 +219,44 @@ Visitors and participants see the full timeline including gatherup:
 
 ## App routes
 
-### Implemented (v1 skeleton)
+### Implemented
 
 | Route | Purpose |
 |-------|---------|
 | `/` | Branded homepage |
-| `/bookings` | Placeholder — future cosplayer booking flow |
-| `/sessions` | Placeholder — future session list / queue |
+| `/photographers` | Public photographer list |
+| `/photographers/[id]` | Photographer profile and application list |
+| `/photographers/[id]?loginHash=…` | Same; confirm/revoke when hash is valid |
+| `/locations` | Public location list |
+| `/bookings` | Cosplayer application form (creates `pending` bookings) |
+| `/bookings/success` | Post-submit summary |
+| `/sessions` | Placeholder — future session list |
 | `/notifications` | Placeholder — future notifications |
 | `/api/health` | Health check (app + MySQL) |
 
-### Planned (scheduling milestone)
+### Planned
 
 | Route | Actor | Maps to workflow |
 |-------|-------|------------------|
-| Cosplayer registration | Cosplayer | Workflow 2 |
-| Booking flow | Cosplayer | Workflow 3 |
 | Organizer admin (photographers, locations) | Organizer | Workflow 1 |
-| Photographer session queue | Photographer | Read bookings for logged-in photographer |
+| Cosplayer account auth | Cosplayer | Workflow 2 (auth deferred) |
 
-Exact paths and auth gates will be decided during planning.
+Exact paths and auth gates for organizer tools will be decided during planning.
 
 ---
 
-## Database (current vs target)
+## Database
 
-**Current** (`src/db/schema.ts`): placeholder `app_health` table only.
-
-**Target** (scheduling milestone): tables backing Person, Location, Timeslot, and Booking per the domain model above. Drizzle ORM + MySQL migrations follow existing project conventions.
+**Current** (`src/db/schema.ts`): `persons`, `locations`, `timeslots`, `bookings`, `app_health`. Bookings use `pending` | `confirmed` status; photographers may have `login_hash`. Drizzle ORM + MySQL migrations — `npm run db:migrate`.
 
 ---
 
 ## Out of scope (for now)
 
-- Authentication and login (cosplayer self-register + organizer admin)
+- Full authentication (cosplayer accounts, organizer admin login)
 - Image upload — galleries use external URLs
-- Booking status lifecycle (cancelled, no-show, etc.)
-- Notifications (email, in-app)
+- Booking statuses beyond `pending` and `confirmed` (cancelled, no-show, etc.)
+- Email on photographer confirm/revoke (submit emails to cosplayer, organizer, and photographer are implemented — see [email.md](./email.md))
 - Payment and post-shoot photo delivery
 - Multi-day photoday events
 
