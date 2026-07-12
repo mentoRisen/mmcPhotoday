@@ -21,5 +21,11 @@ A cosplayer's request for a session at a specific location, bookable timeslot, a
 ### Confirm-only slot hold
 Availability rule where only confirmed bookings block a location+timeslot pair. Multiple pending photoshoot applications may target the same pair until one is confirmed.
 
+### Photographer schedule constraint
+Availability rule where only confirmed bookings block a photographer+timeslot pair across all locations. A photographer may not hold two confirmed sessions at the same bookable timeslot.
+
+### Photographer confirm override
+When a photographer confirms a pending photoshoot application, they choose the final location and timeslot from always-visible pickers defaulting to the cosplayer's submitted values. Confirm persists those choices and may differ from the original application.
+
 ### Confirmed Session Schedule
 The public `/sessions` (Termíny) timetable showing all confirmed photoshoot applications in a location × timeslot matrix. Each occupied cell displays cosplayer and photographer names; empty cells show `—`. Pending applications do not appear.

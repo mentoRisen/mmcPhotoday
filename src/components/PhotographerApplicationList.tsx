@@ -1,11 +1,17 @@
 "use client";
 
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { PhotographerApplicationSummary } from "@/db/applications";
+import type { Location, Timeslot } from "@/db/schema";
+import ActionAlertDialog from "@/components/ActionAlertDialog";
 import {
   confirmApplicationAction,
   revokeApplicationAction,
+  type PhotographerActionState,
 } from "@/app/photographers/[id]/actions";
+
+const initialActionState: PhotographerActionState = {};
 
 function formatTimeslot(label: string, startTime: string): string {
   const time = startTime.slice(0, 5);
@@ -19,6 +25,7 @@ function formatDate(value: Date): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Bratislava",
   }).format(value);
 }
 
@@ -44,15 +51,33 @@ function ActionButton({
 
 export default function PhotographerApplicationList({
   applications,
+  locations,
+  timeslots,
   canManage = false,
   photographerId,
   loginHash,
 }: {
   applications: PhotographerApplicationSummary[];
+  locations: Pick<Location, "id" | "name">[];
+  timeslots: Pick<Timeslot, "id" | "label" | "startTime">[];
   canManage?: boolean;
   photographerId?: number;
   loginHash?: string;
 }) {
+  const [confirmState, confirmAction] = useActionState(
+    confirmApplicationAction,
+    initialActionState,
+  );
+  const [revokeState, revokeAction] = useActionState(
+    revokeApplicationAction,
+    initialActionState,
+  );
+  const actionError = confirmState.error ?? revokeState.error ?? null;
+  const [dismissedErrorKey, setDismissedErrorKey] = useState<string | null>(null);
+  const errorKey = actionError ?? "";
+  const alertMessage =
+    actionError && dismissedErrorKey !== errorKey ? actionError : null;
+
   if (applications.length === 0) {
     return (
       <div className="empty-state">
@@ -65,7 +90,12 @@ export default function PhotographerApplicationList({
   }
 
   return (
-    <ul className="application-list">
+    <>
+      <ActionAlertDialog
+        message={alertMessage}
+        onClose={() => setDismissedErrorKey(errorKey)}
+      />
+      <ul className="application-list">
       {applications.map((application) => (
         <li key={application.id} className="application-list-item">
           <div className="application-list-header">
@@ -98,7 +128,7 @@ export default function PhotographerApplicationList({
           {canManage && photographerId && loginHash ? (
             <div className="application-list-actions">
               {application.status === "pending" ? (
-                <form action={confirmApplicationAction}>
+                <form action={confirmAction} className="application-confirm-form">
                   <input
                     type="hidden"
                     name="applicationId"
@@ -110,6 +140,34 @@ export default function PhotographerApplicationList({
                     value={photographerId}
                   />
                   <input type="hidden" name="loginHash" value={loginHash} />
+                  <label className="form-field">
+                    <span>Stanovište</span>
+                    <select
+                      name="locationId"
+                      required
+                      defaultValue={String(application.locationId)}
+                    >
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="form-field">
+                    <span>Termín</span>
+                    <select
+                      name="timeslotId"
+                      required
+                      defaultValue={String(application.timeslotId)}
+                    >
+                      {timeslots.map((slot) => (
+                        <option key={slot.id} value={slot.id}>
+                          {formatTimeslot(slot.label, String(slot.startTime))}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <ActionButton
                     label="Potvrdiť prihlášku"
                     className="btn btn-primary"
@@ -117,7 +175,7 @@ export default function PhotographerApplicationList({
                 </form>
               ) : null}
               {application.status === "confirmed" ? (
-                <form action={revokeApplicationAction}>
+                <form action={revokeAction}>
                   <input
                     type="hidden"
                     name="applicationId"
@@ -139,6 +197,7 @@ export default function PhotographerApplicationList({
           ) : null}
         </li>
       ))}
-    </ul>
+      </ul>
+    </>
   );
 }

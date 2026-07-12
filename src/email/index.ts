@@ -10,10 +10,14 @@ export {
   sendApplicationConfirmationToCosplayer,
   sendApplicationNotificationToOrganizer,
   sendApplicationNotificationToPhotographer,
+  sendSessionConfirmationToCosplayer,
+  sendSessionRevocationToCosplayer,
 } from "./application-emails";
 export type {
   ApplicationEmailDetail,
   PhotographerApplicationEmailDetail,
+  SessionConfirmationEmailDetail,
+  SessionRevocationEmailDetail,
 } from "./application-emails";
 export { sendPhotographerRegistrationToOrganizer } from "./photographer-registration-emails";
 export type { PhotographerRegistrationEmailDetail } from "./photographer-registration-emails";

@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import type { Person, Location, Timeslot } from "@/db/schema";
-import type { LocationTimeslotKey } from "@/db/applications";
+import type { LocationTimeslotKey, PhotographerTimeslotKey } from "@/db/applications";
 import {
   lookupCosplayerByEmail,
   submitApplication,
@@ -14,6 +14,7 @@ type ApplicationFormProps = {
   locations: Location[];
   timeslots: Timeslot[];
   confirmedKeys: LocationTimeslotKey[];
+  confirmedPhotographerTimeslotKeys: PhotographerTimeslotKey[];
   defaultPhotographerId?: number;
 };
 
@@ -31,13 +32,41 @@ function resolveDefaultPhotographerId(
   return "";
 }
 
-function isSlotBlocked(
+function isLocationTimeslotBlocked(
   locationId: number,
   timeslotId: number,
   confirmedKeys: LocationTimeslotKey[],
 ): boolean {
   return confirmedKeys.some(
     (key) => key.locationId === locationId && key.timeslotId === timeslotId,
+  );
+}
+
+function isPhotographerTimeslotBlocked(
+  photographerId: number,
+  timeslotId: number,
+  confirmedPhotographerTimeslotKeys: PhotographerTimeslotKey[],
+): boolean {
+  return confirmedPhotographerTimeslotKeys.some(
+    (key) =>
+      key.photographerId === photographerId && key.timeslotId === timeslotId,
+  );
+}
+
+function isSlotBlocked(
+  locationId: number,
+  timeslotId: number,
+  photographerId: number,
+  confirmedKeys: LocationTimeslotKey[],
+  confirmedPhotographerTimeslotKeys: PhotographerTimeslotKey[],
+): boolean {
+  return (
+    isLocationTimeslotBlocked(locationId, timeslotId, confirmedKeys) ||
+    isPhotographerTimeslotBlocked(
+      photographerId,
+      timeslotId,
+      confirmedPhotographerTimeslotKeys,
+    )
   );
 }
 
@@ -48,6 +77,7 @@ export default function ApplicationForm({
   locations,
   timeslots,
   confirmedKeys,
+  confirmedPhotographerTimeslotKeys,
   defaultPhotographerId,
 }: ApplicationFormProps) {
   const [email, setEmail] = useState("");
@@ -68,10 +98,18 @@ export default function ApplicationForm({
 
   const selectedLocationId = Number(locationId);
   const selectedTimeslotId = Number(timeslotId);
+  const selectedPhotographerId = Number(photographerId);
   const selectionBlocked =
     locationId &&
     timeslotId &&
-    isSlotBlocked(selectedLocationId, selectedTimeslotId, confirmedKeys);
+    photographerId &&
+    isSlotBlocked(
+      selectedLocationId,
+      selectedTimeslotId,
+      selectedPhotographerId,
+      confirmedKeys,
+      confirmedPhotographerTimeslotKeys,
+    );
 
   function runEmailLookup(value: string) {
     const trimmed = value.trim();
@@ -194,18 +232,33 @@ export default function ApplicationForm({
           >
             <option value="">Vyber termín</option>
             {timeslots.map((slot) => {
-              const blocked =
+              const blockedByLocation =
                 locationId &&
-                isSlotBlocked(Number(locationId), slot.id, confirmedKeys);
+                isLocationTimeslotBlocked(
+                  Number(locationId),
+                  slot.id,
+                  confirmedKeys,
+                );
+              const blockedByPhotographer =
+                photographerId &&
+                isPhotographerTimeslotBlocked(
+                  Number(photographerId),
+                  slot.id,
+                  confirmedPhotographerTimeslotKeys,
+                );
+              const blocked = Boolean(blockedByLocation || blockedByPhotographer);
               return (
                 <option
                   key={slot.id}
                   value={slot.id}
-                  disabled={Boolean(blocked)}
+                  disabled={blocked}
                 >
                   {slot.label}
                   {slot.startTime ? ` (${String(slot.startTime).slice(0, 5)})` : ""}
-                  {blocked ? " — obsadené" : ""}
+                  {blockedByLocation ? " — obsadené" : ""}
+                  {!blockedByLocation && blockedByPhotographer
+                    ? " — fotograf obsadený"
+                    : ""}
                 </option>
               );
             })}
@@ -214,7 +267,15 @@ export default function ApplicationForm({
 
         {selectionBlocked ? (
           <p className="form-error">
-            Toto stanovište a termín sú už obsadené potvrdenou rezerváciou.
+            {locationId &&
+            timeslotId &&
+            isLocationTimeslotBlocked(
+              selectedLocationId,
+              selectedTimeslotId,
+              confirmedKeys,
+            )
+              ? "Toto stanovište a termín sú už obsadené potvrdenou rezerváciou."
+              : "Tento fotograf má v tomto termíne už potvrdené fotenie."}
           </p>
         ) : null}
       </fieldset>

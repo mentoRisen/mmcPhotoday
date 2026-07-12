@@ -66,6 +66,7 @@ describe("ApplicationForm", () => {
         locations={locations}
         timeslots={timeslots}
         confirmedKeys={[]}
+        confirmedPhotographerTimeslotKeys={[]}
       />,
     );
 
@@ -86,6 +87,7 @@ describe("ApplicationForm", () => {
         locations={locations}
         timeslots={timeslots}
         confirmedKeys={[]}
+        confirmedPhotographerTimeslotKeys={[]}
       />,
     );
 
@@ -109,6 +111,7 @@ describe("ApplicationForm", () => {
         locations={locations}
         timeslots={timeslots}
         confirmedKeys={[]}
+        confirmedPhotographerTimeslotKeys={[]}
       />,
     );
 
@@ -131,10 +134,38 @@ describe("ApplicationForm", () => {
         locations={locations}
         timeslots={timeslots}
         confirmedKeys={[]}
+        confirmedPhotographerTimeslotKeys={[]}
         defaultPhotographerId={1}
       />,
     );
 
     expect((screen.getByLabelText("Fotograf") as HTMLSelectElement).value).toBe("1");
+  });
+
+  it("disables timeslot when photographer is confirmed busy at that time", () => {
+    render(
+      <ApplicationForm
+        photographers={photographers}
+        locations={locations}
+        timeslots={[
+          ...timeslots,
+          {
+            id: 4,
+            label: "Second shoot",
+            startTime: "11:00:00",
+            bookable: true,
+          },
+        ]}
+        confirmedKeys={[]}
+        confirmedPhotographerTimeslotKeys={[{ photographerId: 1, timeslotId: 3 }]}
+        defaultPhotographerId={1}
+      />,
+    );
+
+    const timeslotSelect = screen.getByLabelText("Termín") as HTMLSelectElement;
+    const blockedOption = Array.from(timeslotSelect.options).find(
+      (option) => option.value === "3",
+    );
+    expect(blockedOption?.disabled).toBe(true);
   });
 });

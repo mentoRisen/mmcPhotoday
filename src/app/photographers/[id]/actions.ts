@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { actionErrorMessage } from "@/app/photographers/[id]/action-errors";
 import {
   ApplicationForbiddenError,
   ApplicationNotFoundError,
@@ -8,8 +9,17 @@ import {
   confirmApplicationByPhotographer,
   revokeApplicationByPhotographer,
 } from "@/db/applications";
-import { BookingConflictError } from "@/db/bookings";
+import {
+  BookingConflictError,
+  NonBookableTimeslotError,
+  PhotographerScheduleConflictError,
+} from "@/db/bookings";
+import { sendSessionConfirmationToCosplayer, sendSessionRevocationToCosplayer } from "@/email";
 import { isPhotographerLoginValid } from "@/db/photographers";
+
+export type PhotographerActionState = {
+  error?: string | null;
+};
 
 function parsePositiveInt(value: FormDataEntryValue | null): number | null {
   if (typeof value !== "string" || value.trim() === "") {
@@ -19,15 +29,8 @@ function parsePositiveInt(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function redirectToPhotographerPage(
-  photographerId: number,
-  loginHash: string,
-  actionError?: string,
-) {
+function redirectToPhotographerPage(photographerId: number, loginHash: string) {
   const params = new URLSearchParams({ loginHash });
-  if (actionError) {
-    params.set("actionError", actionError);
-  }
   redirect(`/photographers/${photographerId}?${params.toString()}`);
 }
 
@@ -42,46 +45,78 @@ async function requirePhotographerAccess(
   return isPhotographerLoginValid(photographerId, loginHash.trim());
 }
 
-export async function confirmApplicationAction(formData: FormData) {
+export async function confirmApplicationAction(
+  _prevState: PhotographerActionState,
+  formData: FormData,
+): Promise<PhotographerActionState> {
   const applicationId = parsePositiveInt(formData.get("applicationId"));
   const photographerId = parsePositiveInt(formData.get("photographerId"));
+  const locationId = parsePositiveInt(formData.get("locationId"));
+  const timeslotId = parsePositiveInt(formData.get("timeslotId"));
   const loginHash = String(formData.get("loginHash") ?? "");
 
   if (!(await requirePhotographerAccess(photographerId, loginHash))) {
     redirect("/photographers");
   }
 
+  if (!locationId || !timeslotId) {
+    return { error: actionErrorMessage("invalid_action") };
+  }
+
   try {
-    await confirmApplicationByPhotographer(applicationId!, photographerId!);
+    const detail = await confirmApplicationByPhotographer(
+      applicationId!,
+      photographerId!,
+      { locationId: locationId!, timeslotId: timeslotId! },
+    );
+
+    try {
+      await sendSessionConfirmationToCosplayer({
+        cosplayerName: detail.cosplayerName,
+        cosplayerEmail: detail.cosplayerEmail,
+        photographerName: detail.photographerName,
+        locationName: detail.locationName,
+        timeslotLabel: detail.timeslotLabel,
+        timeslotStartTime: detail.timeslotStartTime,
+        submittedAt: detail.createdAt,
+        confirmedAt: new Date(),
+      });
+    } catch (error) {
+      console.error("Failed to send cosplayer session confirmation email", error);
+    }
+
     redirectToPhotographerPage(photographerId!, loginHash);
   } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+    if (error instanceof Error && error.message.startsWith("NEXT_REDIRECT")) {
       throw error;
     }
     if (error instanceof BookingConflictError) {
-      redirectToPhotographerPage(
-        photographerId!,
-        loginHash,
-        "slot_taken",
-      );
+      return { error: actionErrorMessage("slot_taken") };
+    }
+    if (error instanceof PhotographerScheduleConflictError) {
+      return { error: actionErrorMessage("photographer_busy") };
+    }
+    if (error instanceof NonBookableTimeslotError) {
+      return { error: actionErrorMessage("invalid_action") };
     }
     if (
       error instanceof ApplicationNotFoundError ||
       error instanceof ApplicationForbiddenError ||
       error instanceof InvalidApplicationStatusError
     ) {
-      redirectToPhotographerPage(
-        photographerId!,
-        loginHash,
-        "invalid_action",
-      );
+      return { error: actionErrorMessage("invalid_action") };
     }
     console.error("Confirm application failed", error);
-    redirectToPhotographerPage(photographerId!, loginHash, "unknown");
+    return { error: actionErrorMessage("unknown") };
   }
+
+  return {};
 }
 
-export async function revokeApplicationAction(formData: FormData) {
+export async function revokeApplicationAction(
+  _prevState: PhotographerActionState,
+  formData: FormData,
+): Promise<PhotographerActionState> {
   const applicationId = parsePositiveInt(formData.get("applicationId"));
   const photographerId = parsePositiveInt(formData.get("photographerId"));
   const loginHash = String(formData.get("loginHash") ?? "");
@@ -91,10 +126,29 @@ export async function revokeApplicationAction(formData: FormData) {
   }
 
   try {
-    await revokeApplicationByPhotographer(applicationId!, photographerId!);
+    const detail = await revokeApplicationByPhotographer(
+      applicationId!,
+      photographerId!,
+    );
+
+    try {
+      await sendSessionRevocationToCosplayer({
+        cosplayerName: detail.cosplayerName,
+        cosplayerEmail: detail.cosplayerEmail,
+        photographerName: detail.photographerName,
+        locationName: detail.locationName,
+        timeslotLabel: detail.timeslotLabel,
+        timeslotStartTime: detail.timeslotStartTime,
+        submittedAt: detail.createdAt,
+        revokedAt: new Date(),
+      });
+    } catch (error) {
+      console.error("Failed to send cosplayer session revocation email", error);
+    }
+
     redirectToPhotographerPage(photographerId!, loginHash);
   } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+    if (error instanceof Error && error.message.startsWith("NEXT_REDIRECT")) {
       throw error;
     }
     if (
@@ -102,13 +156,11 @@ export async function revokeApplicationAction(formData: FormData) {
       error instanceof ApplicationForbiddenError ||
       error instanceof InvalidApplicationStatusError
     ) {
-      redirectToPhotographerPage(
-        photographerId!,
-        loginHash,
-        "invalid_action",
-      );
+      return { error: actionErrorMessage("invalid_action") };
     }
     console.error("Revoke application failed", error);
-    redirectToPhotographerPage(photographerId!, loginHash, "unknown");
+    return { error: actionErrorMessage("unknown") };
   }
+
+  return {};
 }

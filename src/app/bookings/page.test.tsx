@@ -5,6 +5,7 @@ const listPhotographers = vi.fn();
 const listLocations = vi.fn();
 const listBookableTimeslots = vi.fn();
 const listConfirmedLocationTimeslotKeys = vi.fn();
+const listConfirmedPhotographerTimeslotKeys = vi.fn();
 
 vi.mock("@/db/photographers", () => ({
   listPhotographers: (...args: unknown[]) => listPhotographers(...args),
@@ -21,6 +22,8 @@ vi.mock("@/db/timeslots", () => ({
 vi.mock("@/db/applications", () => ({
   listConfirmedLocationTimeslotKeys: (...args: unknown[]) =>
     listConfirmedLocationTimeslotKeys(...args),
+  listConfirmedPhotographerTimeslotKeys: (...args: unknown[]) =>
+    listConfirmedPhotographerTimeslotKeys(...args),
 }));
 
 import BookingsPage from "./page";
@@ -31,7 +34,9 @@ describe("bookings page", () => {
     listLocations.mockReset();
     listBookableTimeslots.mockReset();
     listConfirmedLocationTimeslotKeys.mockReset();
+    listConfirmedPhotographerTimeslotKeys.mockReset();
     listConfirmedLocationTimeslotKeys.mockResolvedValue([]);
+    listConfirmedPhotographerTimeslotKeys.mockResolvedValue([]);
   });
 
   it("shows empty state when catalog is not ready", async () => {

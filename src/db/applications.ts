@@ -9,8 +9,9 @@ import {
   type Booking,
 } from "./schema";
 import {
-  BookingConflictError,
+  assertSessionSlotAvailable,
   NonBookableTimeslotError,
+  prepareSessionSlotWrite,
 } from "./bookings";
 import { normalizeEmail } from "./cosplayers";
 
@@ -36,6 +37,16 @@ export class InvalidApplicationStatusError extends Error {
 }
 
 export type LocationTimeslotKey = {
+  locationId: number;
+  timeslotId: number;
+};
+
+export type PhotographerTimeslotKey = {
+  photographerId: number;
+  timeslotId: number;
+};
+
+export type ConfirmApplicationInput = {
   locationId: number;
   timeslotId: number;
 };
@@ -68,7 +79,9 @@ export type PhotographerApplicationSummary = {
   status: Booking["status"];
   createdAt: Date;
   cosplayerName: string;
+  locationId: number;
   locationName: string;
+  timeslotId: number;
   timeslotLabel: string;
   timeslotStartTime: string;
 };
@@ -104,7 +117,9 @@ export async function listApplicationsForPhotographer(
       status: bookings.status,
       createdAt: bookings.createdAt,
       cosplayerName: persons.name,
+      locationId: bookings.locationId,
       locationName: locations.name,
+      timeslotId: bookings.timeslotId,
       timeslotLabel: timeslots.label,
       timeslotStartTime: timeslots.startTime,
     })
@@ -157,7 +172,8 @@ export async function listConfirmedSessions(): Promise<ConfirmedSessionSummary[]
 export async function confirmApplicationByPhotographer(
   applicationId: number,
   photographerId: number,
-): Promise<void> {
+  slotChoice: ConfirmApplicationInput,
+): Promise<ApplicationDetail> {
   await db.transaction(async (tx) => {
     const [booking] = await tx
       .select()
@@ -175,33 +191,35 @@ export async function confirmApplicationByPhotographer(
       throw new InvalidApplicationStatusError();
     }
 
-    const [confirmedRow] = await tx
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.locationId, booking.locationId),
-          eq(bookings.timeslotId, booking.timeslotId),
-          eq(bookings.status, "confirmed"),
-        ),
-      )
-      .limit(1);
-
-    if (confirmedRow) {
-      throw new BookingConflictError();
-    }
+    await prepareSessionSlotWrite(tx, {
+      locationId: slotChoice.locationId,
+      timeslotId: slotChoice.timeslotId,
+      photographerId,
+      excludeBookingId: applicationId,
+    });
 
     await tx
       .update(bookings)
-      .set({ status: "confirmed" })
+      .set({
+        status: "confirmed",
+        locationId: slotChoice.locationId,
+        timeslotId: slotChoice.timeslotId,
+      })
       .where(eq(bookings.id, applicationId));
   });
+
+  const detail = await getApplicationById(applicationId);
+  if (!detail) {
+    throw new ApplicationNotFoundError();
+  }
+
+  return detail;
 }
 
 export async function revokeApplicationByPhotographer(
   applicationId: number,
   photographerId: number,
-): Promise<void> {
+): Promise<ApplicationDetail> {
   await db.transaction(async (tx) => {
     const [booking] = await tx
       .select()
@@ -224,6 +242,25 @@ export async function revokeApplicationByPhotographer(
       .set({ status: "pending" })
       .where(eq(bookings.id, applicationId));
   });
+
+  const detail = await getApplicationById(applicationId);
+  if (!detail) {
+    throw new ApplicationNotFoundError();
+  }
+
+  return detail;
+}
+
+export async function listConfirmedPhotographerTimeslotKeys(): Promise<
+  PhotographerTimeslotKey[]
+> {
+  return db
+    .select({
+      photographerId: bookings.photographerId,
+      timeslotId: bookings.timeslotId,
+    })
+    .from(bookings)
+    .where(eq(bookings.status, "confirmed"));
 }
 
 export async function listConfirmedLocationTimeslotKeys(): Promise<
@@ -310,30 +347,20 @@ export async function createApplication(
   }
 
   return db.transaction(async (tx) => {
+    await assertSessionSlotAvailable(tx, {
+      locationId: input.locationId,
+      timeslotId: input.timeslotId,
+      photographerId: input.photographerId,
+    });
+
     const [slot] = await tx
       .select()
       .from(timeslots)
       .where(eq(timeslots.id, input.timeslotId))
       .limit(1);
 
-    if (!slot?.bookable) {
+    if (!slot) {
       throw new NonBookableTimeslotError();
-    }
-
-    const [confirmedRow] = await tx
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.locationId, input.locationId),
-          eq(bookings.timeslotId, input.timeslotId),
-          eq(bookings.status, "confirmed"),
-        ),
-      )
-      .limit(1);
-
-    if (confirmedRow) {
-      throw new BookingConflictError();
     }
 
     const [existingCosplayer] = await tx

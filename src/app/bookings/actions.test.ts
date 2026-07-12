@@ -90,6 +90,7 @@ describe("bookings actions", () => {
       photographerLoginHash: "secret-hash",
       locationName: "Castle",
       timeslotLabel: "First shoot",
+      timeslotStartTime: "09:30:00",
       createdAt: new Date("2026-07-11T09:00:00Z"),
     });
 
