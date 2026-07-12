@@ -29,6 +29,13 @@
       "when": 1783794086413,
       "tag": "0003_aberrant_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1784124000000,
+      "tag": "0004_photographer_invitation_sent",
+      "breakpoints": true
     }
   ]
 }

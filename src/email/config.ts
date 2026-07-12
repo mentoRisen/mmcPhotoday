@@ -47,6 +47,27 @@ export function loadSmtpConfig(): SmtpConfig {
   return { host, port, secure, user, pass, from };
 }
 
+export function normalizeRecipientEmail(address: string): string {
+  const trimmed = address.trim();
+  const match = trimmed.match(/<([^>]+)>/);
+  return (match ? match[1] : trimmed).trim().toLowerCase();
+}
+
 export function loadEmailTestingTo(): string | undefined {
   return optionalEnv("EMAIL_TESTING_TO");
+}
+
+/** Comma-separated addresses that receive mail normally when EMAIL_TESTING_TO is set. */
+export function loadEmailTestingAllowlist(): Set<string> {
+  const raw = optionalEnv("EMAIL_TESTING_ALLOWLIST");
+  if (!raw) {
+    return new Set();
+  }
+
+  return new Set(
+    raw
+      .split(",")
+      .map((entry) => normalizeRecipientEmail(entry))
+      .filter(Boolean),
+  );
 }

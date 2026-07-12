@@ -1035,3 +1035,76 @@ a {
 .summary-list dd {
   font-weight: 600;
 }
+
+/* Confirmed session schedule matrix */
+.schedule-matrix-section {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.schedule-matrix-empty {
+  margin-top: 0;
+}
+
+.schedule-matrix-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-matrix {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.schedule-matrix th,
+.schedule-matrix td {
+  border: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.schedule-matrix thead th {
+  background: var(--surface-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.schedule-matrix-corner {
+  min-width: 10rem;
+}
+
+.schedule-matrix-row-header {
+  background: var(--surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.schedule-matrix-cell {
+  min-width: 9rem;
+}
+
+.schedule-matrix-session {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.schedule-matrix-cosplayer {
+  font-weight: 600;
+}
+
+.schedule-matrix-photographer {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.schedule-matrix-photographer:hover {
+  text-decoration: underline;
+}
+
+.schedule-matrix-empty-cell {
+  color: var(--muted);
+}

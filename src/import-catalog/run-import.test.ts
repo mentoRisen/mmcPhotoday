@@ -5,10 +5,16 @@ import os from "node:os";
 
 const upsertPhotographer = vi.fn();
 const upsertLocation = vi.fn();
+const sendPhotographerInvitationById = vi.fn();
 
 vi.mock("@/db/catalog-import", () => ({
   upsertPhotographer: (...args: unknown[]) => upsertPhotographer(...args),
   upsertLocation: (...args: unknown[]) => upsertLocation(...args),
+}));
+
+vi.mock("@/db/photographer-invitations", () => ({
+  sendPhotographerInvitationById: (...args: unknown[]) =>
+    sendPhotographerInvitationById(...args),
 }));
 
 import { runCatalogImport } from "./run-import";
@@ -28,8 +34,15 @@ describe("runCatalogImport", () => {
     await fs.mkdir(path.join(root, "public"), { recursive: true });
     upsertPhotographer.mockReset();
     upsertLocation.mockReset();
+    sendPhotographerInvitationById.mockReset();
     upsertPhotographer.mockResolvedValue({ action: "created", id: 1 });
     upsertLocation.mockResolvedValue({ action: "created", id: 2 });
+    sendPhotographerInvitationById.mockResolvedValue({
+      status: "sent",
+      photographerId: 1,
+      name: "Anna",
+      email: "anna@example.sk",
+    });
   });
 
   afterEach(async () => {
@@ -56,6 +69,39 @@ describe("runCatalogImport", () => {
     expect(upsertPhotographer.mock.calls[0][0].portfolioUrls[0]).toContain(
       "/catalog/photographers/anna-at-example-sk/hero.jpg",
     );
+    expect(sendPhotographerInvitationById).toHaveBeenCalledWith(1);
+  });
+
+  it("sends invitation only for newly created photographers", async () => {
+    const dir = path.join(root, "import", "photographers");
+    await fs.writeFile(
+      path.join(dir, "anna.json"),
+      JSON.stringify({ name: "Anna", email: "anna@example.sk" }),
+    );
+    upsertPhotographer.mockResolvedValue({ action: "updated", id: 1 });
+
+    await runCatalogImport({
+      rootDir: root,
+      baseUrl: "http://localhost:3002",
+    });
+
+    expect(sendPhotographerInvitationById).not.toHaveBeenCalled();
+  });
+
+  it("can disable invitation sending during import", async () => {
+    const dir = path.join(root, "import", "photographers");
+    await fs.writeFile(
+      path.join(dir, "anna.json"),
+      JSON.stringify({ name: "Anna", email: "anna@example.sk" }),
+    );
+
+    await runCatalogImport({
+      rootDir: root,
+      baseUrl: "http://localhost:3002",
+      sendPhotographerInvitations: false,
+    });
+
+    expect(sendPhotographerInvitationById).not.toHaveBeenCalled();
   });
 
   it("covers AE3: skips invalid JSON and imports valid entity", async () => {

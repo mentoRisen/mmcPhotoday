@@ -1,4 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import { db } from "@/db";
 import {
   bookings,
@@ -72,6 +73,28 @@ export type PhotographerApplicationSummary = {
   timeslotStartTime: string;
 };
 
+export type ConfirmedSessionSummary = {
+  id: number;
+  cosplayerName: string;
+  photographerId: number;
+  photographerName: string;
+  locationId: number;
+  locationName: string;
+  timeslotId: number;
+  timeslotLabel: string;
+  timeslotStartTime: string;
+};
+
+export function confirmedSessionKey(
+  locationId: number,
+  timeslotId: number,
+): string {
+  return `${locationId}:${timeslotId}`;
+}
+
+const cosplayerPersons = alias(persons, "cosplayer_persons");
+const photographerPersons = alias(persons, "photographer_persons");
+
 export async function listApplicationsForPhotographer(
   photographerId: number,
 ): Promise<PhotographerApplicationSummary[]> {
@@ -91,6 +114,39 @@ export async function listApplicationsForPhotographer(
     .innerJoin(timeslots, eq(bookings.timeslotId, timeslots.id))
     .where(eq(bookings.photographerId, photographerId))
     .orderBy(desc(bookings.createdAt));
+
+  return rows.map((row) => ({
+    ...row,
+    timeslotStartTime: String(row.timeslotStartTime),
+  }));
+}
+
+export async function listConfirmedSessions(): Promise<ConfirmedSessionSummary[]> {
+  const rows = await db
+    .select({
+      id: bookings.id,
+      cosplayerName: cosplayerPersons.name,
+      photographerId: bookings.photographerId,
+      photographerName: photographerPersons.name,
+      locationId: bookings.locationId,
+      locationName: locations.name,
+      timeslotId: bookings.timeslotId,
+      timeslotLabel: timeslots.label,
+      timeslotStartTime: timeslots.startTime,
+    })
+    .from(bookings)
+    .innerJoin(
+      cosplayerPersons,
+      eq(bookings.cosplayerId, cosplayerPersons.id),
+    )
+    .innerJoin(
+      photographerPersons,
+      eq(bookings.photographerId, photographerPersons.id),
+    )
+    .innerJoin(locations, eq(bookings.locationId, locations.id))
+    .innerJoin(timeslots, eq(bookings.timeslotId, timeslots.id))
+    .where(eq(bookings.status, "confirmed"))
+    .orderBy(asc(locations.id), asc(timeslots.id));
 
   return rows.map((row) => ({
     ...row,

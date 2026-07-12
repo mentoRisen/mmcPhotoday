@@ -5,8 +5,8 @@ const links = [
   { href: "/", label: "Domov" },
   { href: "/locations", label: "Fotostanovištia" },
   { href: "/photographers", label: "Fotografi" },
-  { href: "/bookings", label: "Rezervácie" },
   { href: "/sessions", label: "Termíny" },
+  { href: "/bookings", label: "Rezervovať fotenie" },
 ];
 
 export default function SiteNav() {

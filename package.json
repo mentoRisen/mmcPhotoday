@@ -14,6 +14,7 @@
     "import:catalog:clear": "node --env-file=.env ./node_modules/.bin/tsx scripts/clear-catalog.ts",
     "import:catalog:reimport": "npm run import:catalog:clear && npm run import:catalog",
     "photographers:set-login-hashes": "node --env-file=.env ./node_modules/.bin/tsx scripts/set-photographer-login-hashes.ts",
+    "photographers:send-invitations": "node --env-file=.env ./node_modules/.bin/tsx scripts/send-photographer-invitations.ts",
     "test": "vitest run",
     "test:email": "node --env-file=.env ./node_modules/.bin/tsx scripts/test-email.ts",
     "service": "./scripts/service.sh",

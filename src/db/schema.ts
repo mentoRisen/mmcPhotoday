@@ -39,6 +39,7 @@ export const persons = mysqlTable("persons", {
   portfolioUrls: json("portfolio_urls").$type<string[]>(),
   referenceImageUrls: json("reference_image_urls").$type<string[]>(),
   loginHash: varchar("login_hash", { length: 64 }).unique(),
+  invitationSentAt: timestamp("invitation_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

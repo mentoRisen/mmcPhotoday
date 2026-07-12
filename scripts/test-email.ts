@@ -1,9 +1,16 @@
-import { loadEmailTestingTo, sendEmail } from "../src/email";
+import {
+  loadEmailTestingAllowlist,
+  loadEmailTestingTo,
+  normalizeRecipientEmail,
+  sendEmail,
+} from "../src/email";
 
 const TEST_RECIPIENT = "lukas.zemcak@gmail.com";
 
 async function main() {
   const testingTo = loadEmailTestingTo();
+  const allowlist = loadEmailTestingAllowlist();
+  const bypassesRedirect = allowlist.has(normalizeRecipientEmail(TEST_RECIPIENT));
   const result = await sendEmail({
     to: TEST_RECIPIENT,
     subject: "MMC Photoday email test",
@@ -18,12 +25,18 @@ async function main() {
     ].join(""),
   });
 
-  if (testingTo) {
+  if (testingTo && bypassesRedirect) {
+    console.log(
+      `EMAIL_TESTING_TO is set, but ${TEST_RECIPIENT} is in EMAIL_TESTING_ALLOWLIST — sent normally`,
+    );
+  } else if (testingTo) {
     console.log(
       `EMAIL_TESTING_TO is set — redirected from ${TEST_RECIPIENT} to ${testingTo}`,
     );
   }
-  console.log(`Email sent to ${testingTo ?? TEST_RECIPIENT}`);
+  console.log(
+    `Email sent to ${testingTo && !bypassesRedirect ? testingTo : TEST_RECIPIENT}`,
+  );
   console.log(`Message ID: ${result.messageId}`);
   console.log(`Accepted: ${result.accepted.join(", ") || "(none)"}`);
 

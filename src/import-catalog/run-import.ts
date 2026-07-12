@@ -10,11 +10,13 @@ import {
   validatePhotographerJson,
 } from "./validate";
 import { upsertLocation, upsertPhotographer } from "@/db/catalog-import";
+import { sendPhotographerInvitationById } from "@/db/photographer-invitations";
 
 export type RunCatalogImportOptions = {
   rootDir: string;
   baseUrl: string;
   publicRoot?: string;
+  sendPhotographerInvitations?: boolean;
 };
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -145,6 +147,26 @@ async function importPhotographersFolder(
         fileName: file.fileName,
         status: upsert.action,
       });
+
+      if (
+        upsert.action === "created" &&
+        options.sendPhotographerInvitations !== false
+      ) {
+        const invitation = await sendPhotographerInvitationById(upsert.id);
+        if (invitation.status === "sent") {
+          console.log(
+            `[invitation] sent to #${invitation.photographerId} ${invitation.name} <${invitation.email}>`,
+          );
+        } else if (invitation.status === "failed") {
+          console.warn(
+            `[invitation] failed for #${invitation.photographerId} ${invitation.name}: ${invitation.error}`,
+          );
+        } else if (invitation.status === "skipped") {
+          console.warn(
+            `[invitation] skipped for #${invitation.photographerId} ${invitation.name}: ${invitation.reason}`,
+          );
+        }
+      }
     } catch (error) {
       results.push({
         entityType,

@@ -35,6 +35,7 @@ Copy `.env.example` to `.env` and set:
 | `EMAIL_FROM` | yes | Default `From` header, e.g. `MMC Photoday <noreply@minimoviecon.sk>` |
 | `EMAIL_ORGANIZER_TO` | yes (application flow) | Inbox for new cosplayer application notifications |
 | `EMAIL_TESTING_TO` | no | When set, all mail is sent to this address instead; body is prefixed with original `to` |
+| `EMAIL_TESTING_ALLOWLIST` | no | Comma-separated addresses that bypass `EMAIL_TESTING_TO` and receive mail normally |
 
 Example (typical submission port):
 
@@ -46,6 +47,7 @@ SMTP_USER="noreply@minimoviecon.sk"
 SMTP_PASS="your-app-password"
 EMAIL_FROM="MMC Photoday <noreply@minimoviecon.sk>"
 # EMAIL_TESTING_TO="lukas.zemcak@gmail.com"
+# EMAIL_TESTING_ALLOWLIST="lukas.zemcak@gmail.com,anna@example.sk"
 ```
 
 When `EMAIL_TESTING_TO` is set (dev/staging), every `sendEmail` call delivers to that address and prepends:
@@ -54,7 +56,9 @@ When `EMAIL_TESTING_TO` is set (dev/staging), every `sendEmail` call delivers to
 [TESTING] This is a testing email. Original recipient (to): cosplayer@example.com
 ```
 
-Leave unset in production.
+When `EMAIL_TESTING_ALLOWLIST` is also set, recipients in that list (case-insensitive, supports `Name <email@example.com>`) are sent normally with no redirect. If `to` is an array, all addresses must be allowlisted to bypass redirect.
+
+Leave `EMAIL_TESTING_TO` unset in production.
 
 ---
 
@@ -169,6 +173,31 @@ Implementation: `src/email/application-emails.ts`. Email failures are logged and
 
 ---
 
+## Photographer invitation emails
+
+Welcome/onboarding mail for photographers with their private review link (`loginHash`).
+
+| Trigger | When |
+|---------|------|
+| Catalog import | Automatically when a **new** photographer is created (`npm run import:catalog`) |
+| CLI bulk | `npm run photographers:send-invitations -- --all` — all photographers not yet invited |
+| CLI individual | `npm run photographers:send-invitations -- --id=10` — one photographer |
+
+Options:
+
+| Flag | Effect |
+|------|--------|
+| `--force` | Re-send even if `persons.invitation_sent_at` is already set |
+| `--dry-run` | Print recipients without sending |
+
+Tracking: `persons.invitation_sent_at` is set after a successful send. Re-import of an existing photographer does **not** re-send unless you use `--force`.
+
+Implementation: `src/email/photographer-invitation-emails.ts`, orchestration in `src/db/photographer-invitations.ts`, CLI in `scripts/send-photographer-invitations.ts`.
+
+Email failures during import are logged (`[invitation] failed …`) and do not fail the import run.
+
+---
+
 ## Files
 
 | File | Role |
@@ -179,6 +208,9 @@ Implementation: `src/email/application-emails.ts`. Email failures are logged and
 | `src/email/index.ts` | Public exports |
 | `src/email/application-emails.ts` | Application submit templates |
 | `src/email/application-emails.test.ts` | Application email unit tests |
+| `src/email/photographer-invitation-emails.ts` | Photographer onboarding invitation |
+| `src/email/photographer-invitation-emails.test.ts` | Invitation email unit tests |
+| `scripts/send-photographer-invitations.ts` | Bulk/individual invitation CLI |
 | `scripts/test-email.ts` | Live SMTP smoke test |
 
 ---

@@ -59,6 +59,8 @@ Hashes are 48-character hex strings (`randomBytes(24)`). Re-running the script s
 
 Organizers distribute the full URL to each photographer (email, chat, etc.). The hash is not shown on public UI. After a cosplayer submits an application, the app also emails the photographer automatically when SMTP is configured — see [email.md](./email.md).
 
+**Bulk onboarding:** run `npm run photographers:send-invitations -- --all` after import to email every photographer who has not yet received an invitation. New photographers imported via catalog receive an invitation automatically. Use `--id=N` to invite one photographer later.
+
 ---
 
 ## Application lifecycle

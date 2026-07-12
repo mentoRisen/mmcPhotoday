@@ -1,4 +1,9 @@
-export { loadEmailTestingTo, loadSmtpConfig } from "./config";
+export {
+  loadEmailTestingAllowlist,
+  loadEmailTestingTo,
+  loadSmtpConfig,
+  normalizeRecipientEmail,
+} from "./config";
 export {
   OrganizerEmailNotConfiguredError,
   buildPhotographerReviewUrl,
@@ -12,6 +17,8 @@ export type {
 } from "./application-emails";
 export { sendPhotographerRegistrationToOrganizer } from "./photographer-registration-emails";
 export type { PhotographerRegistrationEmailDetail } from "./photographer-registration-emails";
+export { sendPhotographerInvitationEmail } from "./photographer-invitation-emails";
+export type { PhotographerInvitationEmailDetail } from "./photographer-invitation-emails";
 export { applyTestingRedirect, sendEmail } from "./send";
 export type {
   EmailAddress,

@@ -1,15 +1,39 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
-import { loadEmailTestingTo, loadSmtpConfig } from "./config";
+import {
+  loadEmailTestingAllowlist,
+  loadEmailTestingTo,
+  loadSmtpConfig,
+  normalizeRecipientEmail,
+} from "./config";
 import type { EmailAddress, SendEmailInput, SendEmailResult, SmtpConfig } from "./types";
 
 function formatOriginalRecipients(to: EmailAddress | EmailAddress[]): string {
   return Array.isArray(to) ? to.join(", ") : to;
 }
 
+function recipientsBypassTestingRedirect(
+  to: EmailAddress | EmailAddress[],
+  allowlist: Set<string>,
+): boolean {
+  if (allowlist.size === 0) {
+    return false;
+  }
+
+  const recipients = Array.isArray(to) ? to : [to];
+  return recipients.every((recipient) =>
+    allowlist.has(normalizeRecipientEmail(recipient)),
+  );
+}
+
 export function applyTestingRedirect(input: SendEmailInput): SendEmailInput {
   const testingTo = loadEmailTestingTo();
   if (!testingTo) {
+    return input;
+  }
+
+  const allowlist = loadEmailTestingAllowlist();
+  if (recipientsBypassTestingRedirect(input.to, allowlist)) {
     return input;
   }
 

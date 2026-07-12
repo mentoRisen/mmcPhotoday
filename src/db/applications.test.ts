@@ -17,6 +17,7 @@ import {
   confirmApplicationByPhotographer,
   listApplicationsForPhotographer,
   listConfirmedLocationTimeslotKeys,
+  listConfirmedSessions,
   revokeApplicationByPhotographer,
 } from "./applications";
 import { BookingConflictError, NonBookableTimeslotError } from "./bookings";
@@ -226,6 +227,68 @@ describe("applications", () => {
         timeslotStartTime: "09:30:00",
       },
     ]);
+  });
+
+  it("listConfirmedSessions returns only confirmed rows with joined fields", async () => {
+    const orderBy = vi.fn().mockResolvedValue([
+      {
+        id: 5,
+        cosplayerName: "Mia",
+        photographerId: 10,
+        photographerName: "Betty",
+        locationId: 1,
+        locationName: "Castle",
+        timeslotId: 2,
+        timeslotLabel: "Second shoot",
+        timeslotStartTime: "11:00:00",
+      },
+    ]);
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const innerJoinTimeslots = vi.fn().mockReturnValue({ where });
+    const innerJoinLocations = vi.fn().mockReturnValue({
+      innerJoin: innerJoinTimeslots,
+    });
+    const innerJoinPhotographer = vi.fn().mockReturnValue({
+      innerJoin: innerJoinLocations,
+    });
+    const innerJoinCosplayer = vi.fn().mockReturnValue({
+      innerJoin: innerJoinPhotographer,
+    });
+    const from = vi.fn().mockReturnValue({ innerJoin: innerJoinCosplayer });
+    select.mockReturnValueOnce({ from });
+
+    await expect(listConfirmedSessions()).resolves.toEqual([
+      {
+        id: 5,
+        cosplayerName: "Mia",
+        photographerId: 10,
+        photographerName: "Betty",
+        locationId: 1,
+        locationName: "Castle",
+        timeslotId: 2,
+        timeslotLabel: "Second shoot",
+        timeslotStartTime: "11:00:00",
+      },
+    ]);
+  });
+
+  it("listConfirmedSessions returns empty array when no confirmed bookings", async () => {
+    const orderBy = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ orderBy });
+    const innerJoinTimeslots = vi.fn().mockReturnValue({ where });
+    const innerJoinLocations = vi.fn().mockReturnValue({
+      innerJoin: innerJoinTimeslots,
+    });
+    const innerJoinPhotographer = vi.fn().mockReturnValue({
+      innerJoin: innerJoinLocations,
+    });
+    const innerJoinCosplayer = vi.fn().mockReturnValue({
+      innerJoin: innerJoinPhotographer,
+    });
+    const from = vi.fn().mockReturnValue({ innerJoin: innerJoinCosplayer });
+    select.mockReturnValueOnce({ from });
+
+    await expect(listConfirmedSessions()).resolves.toEqual([]);
   });
 
   it("confirmApplicationByPhotographer sets pending booking to confirmed", async () => {

@@ -29,6 +29,11 @@ describe("sendEmail", () => {
     });
   });
 
+  afterEach(() => {
+    delete process.env.EMAIL_TESTING_TO;
+    delete process.env.EMAIL_TESTING_ALLOWLIST;
+  });
+
   it("sends a plain-text email with default from address", async () => {
     const result = await sendEmail(
       {
@@ -109,13 +114,34 @@ describe("sendEmail", () => {
       }),
     );
 
-    delete process.env.EMAIL_TESTING_TO;
+  });
+
+  it("sends to the real recipient when they are in EMAIL_TESTING_ALLOWLIST", async () => {
+    process.env.EMAIL_TESTING_TO = "tester@example.com";
+    process.env.EMAIL_TESTING_ALLOWLIST = "cosplayer@example.com";
+
+    await sendEmail(
+      {
+        to: "cosplayer@example.com",
+        subject: "Booking confirmed",
+        text: "Your session is booked.",
+      },
+      { config: testConfig },
+    );
+
+    expect(sendMail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "cosplayer@example.com",
+        text: "Your session is booked.",
+      }),
+    );
   });
 });
 
 describe("applyTestingRedirect", () => {
   afterEach(() => {
     delete process.env.EMAIL_TESTING_TO;
+    delete process.env.EMAIL_TESTING_ALLOWLIST;
   });
 
   it("returns input unchanged when EMAIL_TESTING_TO is unset", () => {
@@ -139,5 +165,33 @@ describe("applyTestingRedirect", () => {
 
     expect(result.to).toBe("tester@example.com");
     expect(result.text).toContain("a@example.com, b@example.com");
+  });
+
+  it("does not redirect when all recipients are in EMAIL_TESTING_ALLOWLIST", () => {
+    process.env.EMAIL_TESTING_TO = "tester@example.com";
+    process.env.EMAIL_TESTING_ALLOWLIST =
+      "allowed@example.com, Other <other@example.com>";
+
+    const input = {
+      to: ["allowed@example.com", "Other <other@example.com>"],
+      subject: "Hi",
+      text: "Hello",
+    };
+
+    expect(applyTestingRedirect(input)).toEqual(input);
+  });
+
+  it("redirects when only some recipients are in EMAIL_TESTING_ALLOWLIST", () => {
+    process.env.EMAIL_TESTING_TO = "tester@example.com";
+    process.env.EMAIL_TESTING_ALLOWLIST = "allowed@example.com";
+
+    const result = applyTestingRedirect({
+      to: ["allowed@example.com", "blocked@example.com"],
+      subject: "Hi",
+      text: "Hello",
+    });
+
+    expect(result.to).toBe("tester@example.com");
+    expect(result.text).toContain("allowed@example.com, blocked@example.com");
   });
 });
