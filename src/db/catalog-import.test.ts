@@ -50,13 +50,18 @@ describe("upsertPhotographer", () => {
     portfolioUrls: ["http://localhost/catalog/p.jpg"],
   };
 
-  it("covers AE2: inserts new photographer", async () => {
+  it("covers AE2: inserts new photographer with login hash", async () => {
     mockSelectChain([]);
-    mockInsertChain(5);
+    const values = mockInsertChain(5);
 
     const result = await upsertPhotographer(record);
     expect(result).toEqual({ action: "created", id: 5 });
     expect(insert).toHaveBeenCalledOnce();
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loginHash: expect.stringMatching(/^[a-f0-9]{48}$/),
+      }),
+    );
   });
 
   it("covers AE2: updates existing photographer by email", async () => {
@@ -66,9 +71,10 @@ describe("upsertPhotographer", () => {
         type: "photographer",
         email: "anna@example.sk",
         name: "Old",
+        loginHash: "existing-hash",
       },
     ]);
-    mockUpdateChain();
+    const { set } = mockUpdateChain();
 
     const result = await upsertPhotographer({
       ...record,
@@ -79,6 +85,28 @@ describe("upsertPhotographer", () => {
     expect(result).toEqual({ action: "updated", id: 3 });
     expect(update).toHaveBeenCalledOnce();
     expect(insert).not.toHaveBeenCalled();
+    expect(set).toHaveBeenCalledWith(
+      expect.not.objectContaining({ loginHash: expect.anything() }),
+    );
+  });
+
+  it("sets login hash on re-import when photographer has none", async () => {
+    mockSelectChain([
+      {
+        id: 3,
+        type: "photographer",
+        loginHash: null,
+      },
+    ]);
+    const { set } = mockUpdateChain();
+
+    await upsertPhotographer(record);
+
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        loginHash: expect.stringMatching(/^[a-f0-9]{48}$/),
+      }),
+    );
   });
 });
 

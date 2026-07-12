@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { closeDb } from "../src/db";
 import { formatImportReport, hasFailures } from "../src/import-catalog/report";
 import { runCatalogImport } from "../src/import-catalog/run-import";
 
@@ -14,13 +15,25 @@ async function main() {
   }
 
   const baseUrl =
-    process.env.CATALOG_BASE_URL?.trim() || "http://localhost:3002";
+    process.env.BASE_URL?.trim() ||
+    process.env.CATALOG_BASE_URL?.trim() ||
+    "http://localhost:3002";
 
-  const results = await runCatalogImport({ rootDir, baseUrl });
-  console.log(formatImportReport(results));
+  let exitCode = 0;
 
-  if (hasFailures(results)) {
-    process.exit(1);
+  try {
+    const results = await runCatalogImport({ rootDir, baseUrl });
+    console.log(formatImportReport(results));
+
+    if (hasFailures(results)) {
+      exitCode = 1;
+    }
+  } finally {
+    await closeDb();
+  }
+
+  if (exitCode !== 0) {
+    process.exit(exitCode);
   }
 }
 

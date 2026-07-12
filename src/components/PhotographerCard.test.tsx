@@ -87,4 +87,36 @@ describe("PhotographerCard", () => {
     expect(container.querySelector(".photographer-socials")).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
   });
+
+  it("links cover and title to detail page when detailHref is set", () => {
+    render(
+      <PhotographerCard
+        photographer={makePhotographer()}
+        detailHref="/photographers/1"
+      />,
+    );
+
+    const profileLink = screen.getByRole("link", { name: /Anna Kovář/ });
+    expect(profileLink.getAttribute("href")).toBe("/photographers/1");
+    expect(screen.getByText("Profil →")).toBeDefined();
+    expect(screen.getByRole("link", { name: "Instagram" }).getAttribute("href")).toBe(
+      "https://instagram.com/anna",
+    );
+  });
+
+  it("shows a slider gallery when multiple portfolio photos exist", () => {
+    const { container } = render(
+      <PhotographerCard
+        photographer={makePhotographer({
+          portfolioUrls: [
+            "/catalog/photographers/anna/cover.jpg",
+            "/catalog/photographers/anna/02.jpg",
+          ],
+        })}
+      />,
+    );
+
+    expect(container.querySelectorAll(".portfolio-slider-track img")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Ďalšia fotografia" })).toBeDefined();
+  });
 });

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const features: {
@@ -8,6 +9,7 @@ const features: {
   {
     title: "Fotostanovištia",
     body: "Viac lokácií na fotenie, každá s vlastným rozvrhom.",
+    link: { href: "/locations", label: "Spoznať stanovištia" },
   },
   {
     title: "Fotografi",
@@ -16,7 +18,8 @@ const features: {
   },
   {
     title: "Cosplayeri",
-    body: "Cosplayeri si vyberú stanovište, čas aj fotografa.",
+    body: "Cosplayeri si vyberú stanovište, čas aj fotografa a rezervujú fotenie.",
+    link: { href: "/bookings", label: "Rezervovať fotenie" },
   },
   {
     title: "Bez kolízií",
@@ -27,22 +30,31 @@ const features: {
 export default function Home() {
   return (
     <>
-      <section className="hero">
-        <h1>
-          Photoday na <span className="accent">Mini Movie Con</span>
-        </h1>
-        <p>
-          Centrálne miesto pre fotenie na konvencii. Koordinuje fotografov,
-          fotostanovištia, cosplayerov a časové okná tak, aby sa termíny
-          neprekrývali.
-        </p>
-        <div className="cta-row">
-          <Link href="/bookings" className="cta primary">
-            Rezervovať fotenie
-          </Link>
-          <Link href="/sessions" className="cta">
-            Zobraziť termíny
-          </Link>
+      <section className="hero hero-branded">
+        <div className="hero-inner">
+          <Image
+            src="/brand/mmc-wordmark.png"
+            alt=""
+            aria-hidden="true"
+            width={640}
+            height={123}
+            className="hero-wordmark"
+            priority
+          />
+          <h1>Photoday</h1>
+          <p className="hero-lead">
+            Centrálne miesto pre fotenie na konvencii. Koordinuje fotografov,
+            fotostanovištia, cosplayerov a časové okná tak, aby sa termíny
+            neprekrývali.
+          </p>
+          <div className="cta-row">
+            <Link href="/bookings" className="cta primary">
+              Rezervovať fotenie
+            </Link>
+            <Link href="/sessions" className="cta secondary">
+              Zobraziť termíny
+            </Link>
+          </div>
         </div>
       </section>
 

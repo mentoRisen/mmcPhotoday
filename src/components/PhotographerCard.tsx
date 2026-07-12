@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Person } from "@/db/schema";
+import PortfolioSlider from "./PortfolioSlider";
 
 const socialFields = [
   { key: "instagram", label: "Instagram" },
@@ -9,59 +11,54 @@ const socialFields = [
 
 export default function PhotographerCard({
   photographer,
+  detailHref,
 }: {
   photographer: Person;
+  detailHref?: string;
 }) {
-  const coverUrl = photographer.portfolioUrls?.[0];
+  const portfolioUrls = photographer.portfolioUrls ?? [];
   const socials = socialFields.filter(({ key }) => photographer[key]);
+
+  const heading = <h3>{photographer.name}</h3>;
+  const description = photographer.description ? (
+    <p className="photographer-description">{photographer.description}</p>
+  ) : null;
+
+  const body = (
+    <div className="photographer-body">
+      {heading}
+      {description}
+      {detailHref ? (
+        <span className="photographer-card-more">Profil →</span>
+      ) : null}
+    </div>
+  );
 
   return (
     <article className="photographer-card">
-      {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- catalog URLs are arbitrary import-produced locations, not next/image candidates
-        <img
-          className="photographer-cover"
-          src={coverUrl}
-          alt={`Ukážka portfólia — ${photographer.name}`}
-        />
+      <PortfolioSlider urls={portfolioUrls} name={photographer.name} />
+      {detailHref ? (
+        <Link className="photographer-card-hit" href={detailHref}>
+          {body}
+        </Link>
       ) : (
-        <div className="photographer-cover placeholder" aria-hidden="true">
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-            <circle cx="12" cy="13" r="4" />
-          </svg>
-        </div>
+        body
       )}
-      <div className="photographer-body">
-        <h3>{photographer.name}</h3>
-        {photographer.description ? (
-          <p className="photographer-description">{photographer.description}</p>
-        ) : null}
-        {socials.length > 0 ? (
-          <ul className="photographer-socials">
-            {socials.map(({ key, label }) => (
-              <li key={key}>
-                <a
-                  href={photographer[key]!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      {socials.length > 0 ? (
+        <ul className="photographer-socials photographer-card-socials">
+          {socials.map(({ key, label }) => (
+            <li key={key}>
+              <a
+                href={photographer[key]!}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }

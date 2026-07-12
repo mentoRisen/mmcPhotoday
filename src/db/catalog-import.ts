@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { createLoginHash } from "@/lib/login-hash";
 import { locations, persons } from "./schema";
 import type { LocationImport, PhotographerImport } from "@/import-catalog/types";
 
@@ -14,7 +15,11 @@ export async function upsertPhotographer(
   record: PhotographerImport & { portfolioUrls: string[] },
 ): Promise<UpsertResult> {
   const [existing] = await db
-    .select({ id: persons.id, type: persons.type })
+    .select({
+      id: persons.id,
+      type: persons.type,
+      loginHash: persons.loginHash,
+    })
     .from(persons)
     .where(
       and(eq(persons.email, record.email), eq(persons.type, "photographer")),
@@ -32,6 +37,7 @@ export async function upsertPhotographer(
         twitter: record.twitter ?? null,
         website: record.website ?? null,
         portfolioUrls: record.portfolioUrls,
+        ...(existing.loginHash ? {} : { loginHash: createLoginHash() }),
       })
       .where(eq(persons.id, existing.id));
 
@@ -48,6 +54,7 @@ export async function upsertPhotographer(
     twitter: record.twitter ?? null,
     website: record.website ?? null,
     portfolioUrls: record.portfolioUrls,
+    loginHash: createLoginHash(),
   });
 
   return { action: "created", id: Number(result.insertId) };

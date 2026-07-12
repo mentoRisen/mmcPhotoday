@@ -8,6 +8,10 @@ vi.mock("@/db/photographers", () => ({
   listPhotographers: (...args: unknown[]) => listPhotographers(...args),
 }));
 
+vi.mock("@/components/PhotographerRegistrationForm", () => ({
+  default: () => <div data-testid="photographer-registration-form" />,
+}));
+
 import PhotographersPage from "./page";
 
 function makePhotographer(overrides: Partial<Person> = {}): Person {
@@ -50,6 +54,7 @@ describe("photographers page", () => {
       "Boris Malý",
       "Cyril Novák",
     ]);
+    expect(screen.getAllByRole("link", { name: /Profil/ })).toHaveLength(3);
   });
 
   it("covers AE3: shows the Slovak empty state when no photographers exist", async () => {
@@ -72,5 +77,14 @@ describe("photographers page", () => {
     const { container } = render(await PhotographersPage());
 
     expect(container.textContent).not.toContain("anna@example.sk");
+  });
+
+  it("renders photographer registration section", async () => {
+    listPhotographers.mockResolvedValue([]);
+
+    render(await PhotographersPage());
+
+    expect(screen.getByRole("heading", { name: "Chceš fotiť na Photoday?" })).toBeDefined();
+    expect(screen.getByTestId("photographer-registration-form")).toBeDefined();
   });
 });

@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { DM_Serif_Display, Work_Sans } from "next/font/google";
 import SiteNav from "@/components/SiteNav";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const dmSerif = DM_Serif_Display({
+  variable: "--font-heading",
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+});
+
+const workSans = Work_Sans({
+  variable: "--font-body",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -20,12 +27,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="sk" className={geistSans.variable}>
+    <html lang="sk" className={`${dmSerif.variable} ${workSans.variable}`}>
       <body>
         <SiteNav />
         <main className="site-main">{children}</main>
         <footer className="site-footer">
-          <p>Mini Movie Con · Photoday · {new Date().getFullYear()}</p>
+          <p>
+            <a href="https://minimoviecon.sk" className="site-footer-link">
+              Mini Movie Con
+            </a>
+            {" · "}
+            Photoday · {new Date().getFullYear()}
+          </p>
         </footer>
       </body>
     </html>

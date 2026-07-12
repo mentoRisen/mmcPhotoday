@@ -6,6 +6,7 @@ import {
   timeslots,
   bookings,
   personTypes,
+  bookingStatuses,
   type NewPerson,
 } from "./schema";
 
@@ -34,15 +35,15 @@ describe("schema", () => {
     expect(person.portfolioUrls).toHaveLength(1);
   });
 
-  it("bookings table has unique constraint on location_id and timeslot_id", () => {
+  it("bookingStatuses includes pending and confirmed", () => {
+    expect(bookingStatuses).toEqual(["pending", "confirmed"]);
+  });
+
+  it("bookings table does not enforce location+timeslot uniqueness", () => {
     const config = getTableConfig(bookings);
     const uniqueConstraint = config.uniqueConstraints.find(
       (c) => c.name === "bookings_location_timeslot_unique",
     );
-    expect(uniqueConstraint).toBeDefined();
-    expect(uniqueConstraint?.columns.map((c) => c.name)).toEqual([
-      "location_id",
-      "timeslot_id",
-    ]);
+    expect(uniqueConstraint).toBeUndefined();
   });
 });

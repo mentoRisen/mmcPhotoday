@@ -94,6 +94,46 @@ On production deploy, `public/catalog/` is included when you copy `public/` into
 
 Never commit `.env`; only `.env.example` is tracked.
 
+## Dev service (hot reload on the VPS)
+
+Run the app like `npm run dev` under **systemd** so it survives disconnects and
+reboots, with the same hot-reload behavior. nginx keeps proxying to port `3002`.
+
+**One-time setup (run as root):**
+
+```bash
+# Install the unit and allow deployer to start/stop without a password
+sudo cp /opt/mmcPhotoday/deploy/mmc-photoday-dev.service /etc/systemd/system/
+sudo cp /opt/mmcPhotoday/deploy/sudoers-mmc-photoday /etc/sudoers.d/mmc-photoday
+sudo chmod 440 /etc/sudoers.d/mmc-photoday
+sudo visudo -c -f /etc/sudoers.d/mmc-photoday
+sudo systemctl daemon-reload
+sudo systemctl enable mmc-photoday-dev.service
+```
+
+Stop any manually started dev server first (otherwise port 3002 is taken):
+
+```bash
+# If something is already on 3002, stop it before starting the service
+ss -tlnp | grep 3002
+# kill the PID shown, or Ctrl+C the terminal running npm run dev
+```
+
+**Day-to-day (as deployer):**
+
+```bash
+npm run service:start      # start
+npm run service:stop       # stop
+npm run service:restart    # restart after pulling code / env changes
+npm run service:status     # is it running?
+npm run service:logs       # follow journal logs
+```
+
+Equivalent: `./scripts/service.sh start|stop|restart|status|logs`
+
+The service reads `/opt/mmcPhotoday/.env`, runs `next dev -p 3002`, and restarts
+on failure. Code edits hot-reload as in local development.
+
 ## Production deploy (VPS: nginx + PM2)
 
 ```bash
@@ -149,7 +189,12 @@ import/
   locations/
 scripts/
   import-catalog.ts       # npm run import:catalog
-deploy/nginx.conf.example
-ecosystem.config.js       # PM2 config
+deploy/
+  nginx.conf.example
+  mmc-photoday-dev.service  # systemd unit (dev + hot reload)
+  sudoers-mmc-photoday      # passwordless start/stop for deployer
+  run-dev.sh                # nvm-aware dev server launcher
+scripts/service.sh          # npm run service:* wrapper
+ecosystem.config.js         # PM2 config (production standalone)
 drizzle.config.ts
 ```

@@ -22,12 +22,19 @@ function createDb(): DB {
   const pool = globalForDb.pool ?? mysql.createPool({ uri: connectionUri });
   const instance = globalForDb.db ?? drizzle(pool, { schema, mode: "default" });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.pool = pool;
-    globalForDb.db = instance;
-  }
+  globalForDb.pool = pool;
+  globalForDb.db = instance;
 
   return instance;
+}
+
+export async function closeDb(): Promise<void> {
+  const pool = globalForDb.pool;
+  if (!pool) return;
+
+  await pool.end();
+  globalForDb.pool = undefined;
+  globalForDb.db = undefined;
 }
 
 // Lazy proxy: the connection pool is created on first property access (first

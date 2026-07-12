@@ -1,0 +1,25 @@
+[Unit]
+Description=MMC Photoday (Next.js dev server with hot reload)
+Documentation=file:///opt/mmcPhotoday/README.md
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deployer
+Group=deployer
+WorkingDirectory=/opt/mmcPhotoday
+EnvironmentFile=-/opt/mmcPhotoday/.env
+Environment=NODE_ENV=development
+Environment=HOME=/home/deployer
+ExecStart=/opt/mmcPhotoday/deploy/run-dev.sh
+Restart=on-failure
+RestartSec=5
+# Next dev can be slow to compile on first request after restart.
+TimeoutStartSec=120
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mmc-photoday-dev
+
+[Install]
+WantedBy=multi-user.target

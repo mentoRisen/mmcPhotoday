@@ -6,9 +6,7 @@ import SiteNav from "@/components/SiteNav";
 describe("homepage", () => {
   it("renders the event title and a CTA into a placeholder route", () => {
     render(<Home />);
-    expect(
-      screen.getByRole("heading", { name: /Mini Movie Con/i }),
-    ).toBeDefined();
+    expect(screen.getByRole("heading", { name: /^Photoday$/i })).toBeDefined();
     const cta = screen.getByRole("link", { name: "Rezervovať fotenie" });
     expect(cta.getAttribute("href")).toBe("/bookings");
   });
